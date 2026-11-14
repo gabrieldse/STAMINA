@@ -16,6 +16,8 @@ export type LandingSite = {
   goal: string;
   facts: [string, string][];
   story: string;
+  // Official region outline as [lat, lon] corners (Artemis, when known).
+  region?: [number, number][];
 };
 
 export const LANDING_SITES = siteData.sites as LandingSite[];

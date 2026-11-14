@@ -54,19 +54,32 @@ EDGE_PX = 10
 COLORBAR_PX = 110  # colorbar plus its tick labels
 MAP_MARGIN = 1.15
 
-# name: (lat, lon, diameter_km), degrees, east-positive longitude
+# name: (lat, lon, diameter_km), degrees, east-positive longitude.
+# Centres and diameters from the IAU Gazetteer of Planetary Nomenclature (USGS).
 FEATURES = {
     "Shackleton": (-89.67, 129.78, 21),
-    "de Gerlache": (-88.5, -87.1, 32),
-    "Shoemaker": (-88.1, 44.9, 51),
-    "Haworth": (-87.45, -5.0, 51),
-    "Faustini": (-87.3, 77.0, 39),
-    "Cabeus": (-85.3, -42.1, 98),
-    "Malapert": (-84.9, 12.9, 69),
-    "Schrödinger": (-75.0, 132.4, 312),
-    "Clavius": (-58.4, -14.4, 231),
-    "Tycho": (-43.31, -11.36, 85),
+    "de Gerlache": (-88.48, -88.34, 33),
+    "Sverdrup": (-88.32, -153.39, 33),
+    "Shoemaker": (-88.14, 45.91, 52),
+    "Slater": (-88.08, 111.29, 25),
+    "Haworth": (-87.45, -5.17, 51),
+    "Faustini": (-87.18, 84.31, 42),
+    "Mons Malapert": (-85.98, -1.67, 67),
+    "Cabeus": (-85.33, -42.13, 101),
+    "Nobile": (-85.28, 53.27, 79),
+    "Malapert": (-85.00, 11.40, 72),
+    "Mons Mouton": (-84.60, 31.00, 130),
+    "Amundsen": (-84.44, 83.07, 103),
+    "Wiechert": (-84.03, 164.70, 41),
+    "Scott": (-82.35, 48.52, 108),
+    "Cabeus B": (-82.26, -54.58, 60),
+    "Idel'son": (-81.35, 112.69, 60),
+    "Schrödinger": (-74.73, 132.93, 316),
+    "Clavius": (-58.62, -14.73, 231),
+    "Tycho": (-43.30, -11.22, 85),
 }
+# Mountains have an extent, not a crater rim.
+MOUNTAINS = {"Mons Malapert", "Mons Mouton"}
 # Label offsets in points (default up-right) for features that crowd near the pole.
 LABEL_OFFSETS = {"Shackleton": (6, -12), "de Gerlache": (-6, 5), "Cabeus": (-6, 5)}
 
