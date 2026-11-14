@@ -1,6 +1,8 @@
 import numpy as np
 import SME_data_getter as sme
 
+#simploified model, perfectly smooth moon
+
 MOON_RADIUS = 1737.4  # in kilometers
 
 # two angles, one for longitude θ the other for latitude φ
