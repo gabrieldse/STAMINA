@@ -378,7 +378,7 @@
 }
 
 .stamina-app-logo-partner {
-  height: 34px;
+  height: 22px;
 }
 
 .stamina-app-logo-separator {
@@ -397,6 +397,7 @@
 .stamina-app-product {
   color: #e3ecf7;
   font-size: 13px;
+  font-weight: 600;
 }
 
 .stamina-app-actions {
@@ -407,12 +408,14 @@
 
 .stamina-app-mode {
   color: #d3e0f0;
-  font-size: 12px;
+  font-size: 13px;
   margin-right: 8px;
 }
 
 .stamina-app-actions button {
-  padding: 9px 15px;
+  padding: 7px 14px;
+  font-size: 13px;
+  line-height: 1.2;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 7px;
@@ -507,5 +510,16 @@
 
   .stamina-workspace {
     overflow-y: auto;
+  }
+}
+
+/* SHORT SCREENS: thinner header, no status bar, so the workspace fits */
+@media (max-height: 820px) {
+  .stamina-app-header {
+    min-height: 48px;
+  }
+
+  .stamina-statusbar {
+    display: none;
   }
 }
