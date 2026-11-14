@@ -1,0 +1,496 @@
+
+.app {
+  background: #07101d;
+  color: #eef4ff;
+  min-height: 100vh;
+}
+
+/* NAVBAR */
+
+.navbar {
+  height: 80px;
+  padding: 0 7%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #1c2b40;
+  background: #081321;
+}
+
+.logo {
+  font-size: 23px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: white;
+  text-decoration: none;
+}
+
+.logo-icon {
+  color: #65aeff;
+  margin-right: 12px;
+}
+
+.navbar nav {
+  display: flex;
+  gap: 32px;
+}
+
+.navbar nav a {
+  color: #adbed5;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.navbar nav a:hover {
+  color: white;
+}
+
+.nav-button {
+  color: #eaf4ff;
+  background: #173859;
+  border: 1px solid #3d719b;
+  padding: 11px 20px;
+  border-radius: 7px;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+/* HERO */
+
+.hero {
+  position: relative;
+  min-height: 570px;
+  display: flex;
+  align-items: center;
+  padding: 100px 8%;
+  background:
+    linear-gradient(90deg,
+      rgba(5, 13, 26, 0.98) 0%,
+      rgba(5, 13, 26, 0.86) 47%,
+      rgba(5, 13, 26, 0.20) 100%),
+    url("https://images-assets.nasa.gov/image/PIA25972/PIA25972~orig.jpg");
+  background-size: cover;
+  background-position: center;
+}
+
+.hero-content {
+  max-width: 720px;
+  position: relative;
+  z-index: 1;
+}
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #76baff;
+}
+
+.hero h1 {
+  font-size: clamp(42px, 5vw, 76px);
+  line-height: 1.08;
+  margin: 24px 0;
+  letter-spacing: -2px;
+}
+
+.hero h1 span {
+  color: #78b9ff;
+}
+
+.hero-description {
+  color: #b2c3dc;
+  font-size: 17px;
+  line-height: 1.8;
+  max-width: 590px;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-top: 34px;
+}
+
+.primary-btn,
+.outline-btn {
+  display: inline-block;
+  padding: 15px 28px;
+  text-decoration: none;
+  border-radius: 7px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.primary-btn {
+  background: #347fe9;
+  color: #fff;
+}
+
+.primary-btn:hover {
+  background: #5599f6;
+}
+
+.outline-btn {
+  border: 1px solid #587394;
+  color: #e2efff;
+}
+
+/* SHARED SECTIONS */
+
+.explorer-section,
+.features,
+.about {
+  padding: 100px 8%;
+}
+
+.section-heading {
+  text-align: center;
+  max-width: 700px;
+  margin: 0 auto 45px;
+}
+
+.section-heading h2,
+.about h2 {
+  font-size: clamp(28px, 3vw, 42px);
+  margin: 16px 0;
+}
+
+.section-heading > p:last-child,
+.about-content > p:not(.eyebrow) {
+  color: #9fb1cb;
+  line-height: 1.8;
+}
+
+/* MAP */
+
+.map-placeholder {
+  height: 440px;
+  border: 1px solid #28415d;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 50% 50%, #243954, #0a1728 65%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.map-content {
+  text-align: center;
+}
+
+.map-icon {
+  font-size: 70px;
+  color: #91b9e9;
+}
+
+.map-content h3 {
+  font-size: 25px;
+  margin-bottom: 8px;
+}
+
+.map-content p {
+  color: #a4b7d1;
+}
+
+.coming-soon {
+  display: inline-block;
+  margin-top: 18px;
+  padding: 9px 14px;
+  border: 1px solid #3c5878;
+  border-radius: 5px;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #83bbff;
+}
+
+/* FEATURES */
+
+.features {
+  background: #0b1728;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.feature-card {
+  padding: 28px;
+  border: 1px solid #263b55;
+  border-radius: 12px;
+  background: #101f33;
+}
+
+.feature-icon {
+  font-size: 33px;
+  color: #7cbaff;
+  margin-bottom: 26px;
+}
+
+.feature-card h3 {
+  font-size: 18px;
+}
+
+.feature-card p {
+  color: #9eafc9;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+/* ABOUT */
+
+.about {
+  text-align: center;
+}
+
+.about-content {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+/* FOOTER */
+
+.footer {
+  border-top: 1px solid #22354e;
+  padding: 35px 8%;
+  text-align: center;
+}
+
+.footer strong {
+  letter-spacing: 3px;
+}
+
+.footer p {
+  color: #8194af;
+  font-size: 12px;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 900px) {
+  .feature-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .navbar nav {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .hero {
+    padding: 80px 6%;
+    min-height: 520px;
+  }
+
+  .hero h1 {
+    letter-spacing: -1px;
+  }
+
+  .feature-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .explorer-section,
+  .features,
+  .about {
+    padding: 65px 6%;
+  }
+
+  .map-placeholder {
+    height: 300px;
+  }
+
+  .nav-button {
+    padding: 10px;
+    font-size: 12px;
+  }
+}
+
+/* TUTORIAL EXIT BAR */
+
+.tutorial-exit-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 6%;
+  background: #071321;
+  border-bottom: 1px solid #2a405d;
+  color: #a9c5e5;
+  font-size: 12px;
+  letter-spacing: 1.5px;
+}
+
+.tutorial-exit-bar button {
+  background: #203550;
+  border: 1px solid #3c597b;
+  border-radius: 7px;
+  color: white;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+
+.tutorial-exit-bar button:hover {
+  background: #2c4d73;
+}
+
+/* =========================================
+   STAMINA SCIENTIFIC APPLICATION SHELL
+========================================= */
+
+.stamina-app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: #07111e;
+  color: #eef4ff;
+}
+
+.stamina-app-header {
+  flex-shrink: 0;
+  min-height: 64px;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: #0c192b;
+  border-bottom: 1px solid #293e59;
+}
+
+.stamina-app-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+.stamina-app-symbol {
+  color: #78bcff;
+  font-size: 24px;
+}
+
+.stamina-app-brand strong {
+  font-size: 19px;
+  letter-spacing: 2px;
+}
+
+.stamina-app-separator {
+  color: #56718f;
+}
+
+.stamina-app-product {
+  color: #a8bdd5;
+  font-size: 13px;
+}
+
+.stamina-app-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stamina-app-mode {
+  color: #8ca9c9;
+  font-size: 12px;
+  margin-right: 8px;
+}
+
+.stamina-app-actions button {
+  padding: 9px 15px;
+  background: #172940;
+  border: 1px solid #365170;
+  border-radius: 7px;
+  color: #dcecff;
+  cursor: pointer;
+}
+
+.stamina-app-actions button:hover {
+  background: #243d5b;
+}
+
+.stamina-app-actions .stamina-app-tutorial-button {
+  background: #2465bd;
+  border-color: #4084d6;
+  color: white;
+}
+
+/* MAIN WORK AREA */
+
+.stamina-workspace {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* BOTTOM STATUS BAR */
+
+.stamina-statusbar {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 20px;
+  background: #091522;
+  border-top: 1px solid #273b55;
+  color: #7e9ab9;
+  font-size: 11px;
+}
+
+/* EXISTING TUTORIAL EXIT BAR */
+
+.tutorial-exit-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 6%;
+  background: #071321;
+  border-bottom: 1px solid #2a405d;
+  color: #a9c5e5;
+  font-size: 12px;
+}
+
+.tutorial-exit-bar button {
+  padding: 10px 16px;
+  background: #203550;
+  border: 1px solid #3c597b;
+  border-radius: 7px;
+  color: white;
+  cursor: pointer;
+}
+
+@media (max-width: 700px) {
+  .stamina-app-header {
+    padding: 10px 14px;
+    flex-wrap: wrap;
+  }
+
+  .stamina-app-mode,
+  .stamina-app-separator,
+  .stamina-app-product {
+    display: none;
+  }
+
+  .stamina-app-actions {
+    margin-left: auto;
+  }
+
+  .stamina-app-actions button {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .stamina-statusbar span:last-child {
+    display: none;
+  }
+
+  .stamina-workspace {
+    overflow-y: auto;
+  }
+}
