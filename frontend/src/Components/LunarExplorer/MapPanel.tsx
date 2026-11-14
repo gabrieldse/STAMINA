@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   FilterStates,
@@ -12,24 +12,59 @@ import type {
 } from "../../types/temperature";
 
 import { LANDING_SITES, isOnPolarMap } from "../../types/sites";
+import type { LandingSite } from "../../types/sites";
 
 import SiteInfoCard from "./SiteInfoCard";
 import SiteList from "./SiteList";
-import type { LandingSite } from "../../types/sites";
-
-// Named sites inside the 80°S map, drawn as markers on it.
-const MAP_SITES = LANDING_SITES.filter(isOnPolarMap).map(
-  ({ id, name, color, latitude, longitude, region }) => ({ id, name, color, latitude, longitude, region })
-);
+import type { SiteGroup } from "./SiteList";
 
 type Props = {
   selectedSite: LunarSite | null;
   filters: FilterStates;
   onSiteSelect: (site: LunarSite) => void;
-  onLandingSiteSelect: (site: LandingSite) => void;
+  onSiteClear: () => void;
   temperature: TemperatureConfig;
   onTemperatureSelection: (stats: TemperatureSelectionStats | null) => void;
 };
+
+// Marker sent to the map viewer.
+type MapSite = {
+  id: string;
+  name: string;
+  label: string;
+  kind: string;
+  color: string;
+  latitude: number;
+  longitude: number;
+  region?: [number, number][];
+};
+
+const CUSTOM_COLOR = "#ff9f43";
+
+// Artemis III regions share names with craters (Haworth, Nobile, ...) but are
+// separate areas next to them, so their map labels say "A3".
+const LANDING_MAP_SITES: MapSite[] = LANDING_SITES.filter(isOnPolarMap).map(
+  ({ id, name, program, color, latitude, longitude, region }) => ({
+    id,
+    name,
+    label: program === "Artemis" ? `A3 ${name}` : name,
+    kind: program === "Artemis" ? "Artemis III region, not the crater" : program,
+    color,
+    latitude,
+    longitude,
+    region,
+  })
+);
+
+function toLunarSite(site: LandingSite): LunarSite {
+  return {
+    id: site.id,
+    name: site.name,
+    latitude: site.latitude,
+    longitude: site.longitude,
+    details: site,
+  };
+}
 
 // Messages posted by the lunar map viewer (public/lunar-map).
 type ViewerMessage =
@@ -40,8 +75,8 @@ type ViewerMessage =
       longitude: number;
       temperatures: SiteTemperatures;
       elevationM: number | null;
-      // Set when a named site marker was clicked or focused.
-      siteId?: string;
+      // Set when a site marker was clicked or focused; absent for a new map point.
+      siteId?: string | null;
     }
   | {
       type: "stamina:selection-stats";
@@ -53,17 +88,11 @@ function isViewerMessage(data: unknown): data is ViewerMessage {
   return typeof type === "string" && type.startsWith("stamina:");
 }
 
-function formatCoordinates(latitude: number, longitude: number) {
-  const lat = `${Math.abs(latitude).toFixed(3)}°${latitude < 0 ? "S" : "N"}`;
-  const lon = `${Math.abs(longitude).toFixed(2)}°${longitude < 0 ? "W" : "E"}`;
-  return `${lat}, ${lon}`;
-}
-
 export default function MapPanel({
   selectedSite,
   filters,
   onSiteSelect,
-  onLandingSiteSelect,
+  onSiteClear,
   temperature,
   onTemperatureSelection,
 }: Props) {
@@ -72,6 +101,14 @@ export default function MapPanel({
   // Site whose info card the user closed; it reopens for the next site.
   const [closedInfoId, setClosedInfoId] = useState<string | null>(null);
   const infoSite = selectedSite?.details;
+
+  // Points clicked on the map ("Custom" group) and sites switched off.
+  const [customSites, setCustomSites] = useState<LunarSite[]>([]);
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => new Set());
+  const customRef = useRef(customSites);
+  useEffect(() => {
+    customRef.current = customSites;
+  }, [customSites]);
 
   // Messages from the map: readiness, clicked sites and selection area.
   useEffect(() => {
@@ -91,28 +128,27 @@ export default function MapPanel({
         Number.isFinite(message.longitude)
       ) {
         const { latitude, longitude, temperatures, elevationM, siteId } = message;
+        const values = { temperatures, elevationM };
         const named = LANDING_SITES.find((site) => site.id === siteId);
+        const custom = customRef.current.find((site) => site.id === siteId);
 
-        onSiteSelect(
-          named
-            ? {
-                id: named.id,
-                name: named.name,
-                latitude: named.latitude,
-                longitude: named.longitude,
-                details: named,
-                temperatures,
-                elevationM,
-              }
-            : {
-                id: `map-${latitude.toFixed(4)}-${longitude.toFixed(4)}`,
-                name: `Map point ${formatCoordinates(latitude, longitude)}`,
-                latitude,
-                longitude,
-                temperatures,
-                elevationM,
-              }
-        );
+        if (named) {
+          onSiteSelect({ ...toLunarSite(named), ...values });
+        } else if (custom) {
+          onSiteSelect({ ...custom, ...values });
+        } else {
+          // A click on empty map: keep it as a new custom point.
+          const point: LunarSite = {
+            id: `custom-${Date.now()}`,
+            name: `Point ${customRef.current.length + 1}`,
+            latitude,
+            longitude,
+            ...values,
+          };
+          customRef.current = [...customRef.current, point];
+          setCustomSites(customRef.current);
+          onSiteSelect(point);
+        }
       }
 
       if (message.type === "stamina:selection-stats") {
@@ -131,28 +167,88 @@ export default function MapPanel({
     );
   }
 
-  // Draw the named landing sites once the map is ready.
+  // Markers of the sites that are switched on.
+  const mapSites = useMemo(() => {
+    const custom: MapSite[] = customSites.map((site) => ({
+      id: site.id,
+      name: site.name,
+      label: site.name,
+      kind: "custom point",
+      color: CUSTOM_COLOR,
+      latitude: site.latitude ?? 0,
+      longitude: site.longitude ?? 0,
+    }));
+    return [...LANDING_MAP_SITES, ...custom].filter((site) => !hiddenIds.has(site.id));
+  }, [customSites, hiddenIds]);
+
   useEffect(() => {
-    if (viewerReady) postToViewer({ type: "stamina:sites", sites: MAP_SITES });
-  }, [viewerReady]);
+    if (viewerReady) postToViewer({ type: "stamina:sites", sites: mapSites });
+  }, [viewerReady, mapSites]);
 
   // The Temperature filter drives the layer and selection on the map.
   useEffect(() => {
     if (viewerReady) postToViewer({ type: "stamina:temperature-config", config: temperature });
   }, [viewerReady, temperature]);
 
-  // A site picked from the list: pin it on the map, which replies with its
-  // temperatures. Sites outside the map just clear the pin.
-  const focusId =
-    selectedSite?.details && !selectedSite.temperatures
-      ? selectedSite.details.id
-      : null;
-  const focusOnMap = selectedSite?.details ? isOnPolarMap(selectedSite.details) : false;
+  // Pin the selected site on the map (the map replies with its values);
+  // sites that aren't drawn (Apollo, switched off, none) clear the pin.
+  const selectedId = selectedSite?.id ?? null;
+  const focusId = mapSites.some((site) => site.id === selectedId) ? selectedId : null;
 
   useEffect(() => {
-    if (!viewerReady || !focusId) return;
-    postToViewer({ type: "stamina:focus-site", siteId: focusOnMap ? focusId : null });
-  }, [viewerReady, focusId, focusOnMap]);
+    if (viewerReady) postToViewer({ type: "stamina:focus-site", siteId: focusId });
+  }, [viewerReady, focusId]);
+
+  // Clicking a site switches it on (and selects it) or off.
+  function toggleSite(id: string) {
+    const next = new Set(hiddenIds);
+
+    if (next.has(id)) {
+      next.delete(id);
+      const named = LANDING_SITES.find((site) => site.id === id);
+      const custom = customSites.find((site) => site.id === id);
+      if (named) onSiteSelect(toLunarSite(named));
+      else if (custom) onSiteSelect(custom);
+    } else {
+      next.add(id);
+      if (selectedId === id) onSiteClear();
+    }
+
+    setHiddenIds(next);
+  }
+
+  // Group switch: all off when every site is on, otherwise all on.
+  function toggleGroup(ids: string[]) {
+    const allOn = ids.every((id) => !hiddenIds.has(id));
+    const next = new Set(hiddenIds);
+    ids.forEach((id) => (allOn ? next.add(id) : next.delete(id)));
+    if (allOn && selectedId && ids.includes(selectedId)) onSiteClear();
+    setHiddenIds(next);
+  }
+
+  const groups: SiteGroup[] = [
+    {
+      key: "artemis",
+      title: "Artemis III",
+      note: "A3 regions",
+      items: LANDING_SITES.filter((site) => site.program === "Artemis"),
+      startOpen: true,
+    },
+    {
+      key: "custom",
+      title: "Custom",
+      note: "Click the map",
+      items: customSites.map(({ id, name }) => ({ id, name, color: CUSTOM_COLOR })),
+      startOpen: true,
+    },
+    {
+      key: "apollo",
+      title: "Apollo",
+      note: "Off the map",
+      items: LANDING_SITES.filter((site) => site.program === "Apollo"),
+      startOpen: false,
+    },
+  ];
 
   const activeFilters = Object.entries(filters)
     .filter(([, state]) => state.enabled)
@@ -179,8 +275,11 @@ export default function MapPanel({
         />
 
         <SiteList
-          selectedId={infoSite?.id ?? null}
-          onSelect={onLandingSiteSelect}
+          groups={groups}
+          hiddenIds={hiddenIds}
+          selectedId={selectedId}
+          onToggleSite={toggleSite}
+          onToggleGroup={toggleGroup}
         />
 
         {infoSite && closedInfoId !== infoSite.id && (

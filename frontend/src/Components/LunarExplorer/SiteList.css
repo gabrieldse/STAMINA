@@ -50,10 +50,13 @@
 .site-list-heading {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   gap: 6px;
-  width: 100%;
-  padding: 2px 4px 3px;
+  padding: 2px 4px;
+}
+
+.site-list-fold {
+  padding: 0;
   border: 0;
   background: none;
   color: #fff;
@@ -63,10 +66,66 @@
   cursor: pointer;
 }
 
-.site-list-heading small {
+.site-list-note {
+  display: block;
+  padding: 0 4px 1px;
   color: #a8a8a8;
   font-size: 10px;
-  font-weight: normal;
+}
+
+/* Group on/off switch */
+.site-list-switch {
+  position: relative;
+  display: inline-block;
+  width: 26px;
+  height: 14px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.site-list-switch input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.site-list-switch span {
+  position: absolute;
+  inset: 0;
+  border-radius: 7px;
+  background: #555;
+  transition: background 0.15s;
+  pointer-events: none;
+}
+
+.site-list-switch span::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s;
+}
+
+.site-list-switch input:checked + span {
+  background: #4b6fa5;
+}
+
+.site-list-switch input:checked + span::after {
+  transform: translateX(12px);
+}
+
+.site-list-switch input:focus-visible + span {
+  outline: 2px solid #75baff;
+}
+
+.site-list-switch input:disabled + span {
+  opacity: 0.4;
 }
 
 .site-list-item {
@@ -75,8 +134,8 @@
   gap: 8px;
   width: 100%;
   min-width: 0;
-  margin-top: 3px;
-  padding: 5px 8px;
+  margin-top: 2px;
+  padding: 3px 8px;
   border: 1px solid transparent;
   border-radius: 10px;
   background: #232326;
@@ -95,6 +154,11 @@
 .site-list-item.active {
   border-color: #6b8fc5;
   background: #4b6fa5;
+}
+
+/* Switched off: dimmed, like the Website draft's mission menu */
+.site-list-item.off {
+  opacity: 0.4;
 }
 
 .site-list-item i {

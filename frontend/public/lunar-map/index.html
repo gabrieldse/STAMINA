@@ -392,8 +392,8 @@ function draw() {
     ctx.textBaseline = "alphabetic";
   }
 
-  // The app's landing sites replace the crater labels.
-  if ($("labels").checked && appSites.length === 0) {
+  // Standalone only; inside the app drawSites shows the craters as faint references.
+  if ($("labels").checked && !EMBED) {
     ctx.font = `600 ${12 * s}px system-ui`; ctx.textAlign = "left"; ctx.lineJoin = "round";
     for (const f of meta.features) {
       const p = toScreen(f.x, f.y);
@@ -426,7 +426,7 @@ function drawCraterRims(s) {
 function drawSites() {
   const s = dpr(), h = 12 * s;
   // Reference craters first, so sites draw over them (inside the app only).
-  if ($("labels").checked && appSites.length > 0) drawCraterRims(s);
+  if ($("labels").checked && EMBED) drawCraterRims(s);
   // Region outlines (official polygons, ~20 km wide), then the markers.
   ctx.lineJoin = "round";
   for (const site of appSites) {
@@ -457,7 +457,8 @@ function drawSites() {
   const order = [...appSites].sort((a, b) => (b.id === pinned?.siteId) - (a.id === pinned?.siteId));
   ctx.font = `600 ${12 * s}px system-ui`; ctx.textAlign = "left";
   for (const site of order) {
-    const p = toScreen(site.x, site.y), w = ctx.measureText(site.name).width;
+    const text = site.label ?? site.name;
+    const p = toScreen(site.x, site.y), w = ctx.measureText(text).width;
     const candidates = [
       [p.sx + 9 * s, p.sy - h / 2], [p.sx - 9 * s - w, p.sy - h / 2],
       [p.sx - w / 2, p.sy - 9 * s - h], [p.sx - w / 2, p.sy + 9 * s],
@@ -466,12 +467,12 @@ function drawSites() {
     if (!free) continue;
     boxes.push(free);
     const x = free.x0 + 2 * s, y = free.y0 + h;
-    ctx.strokeStyle = "#000"; ctx.lineWidth = 3 * s; ctx.strokeText(site.name, x, y);
-    ctx.fillStyle = "#fff"; ctx.fillText(site.name, x, y);
+    ctx.strokeStyle = "#000"; ctx.lineWidth = 3 * s; ctx.strokeText(text, x, y);
+    ctx.fillStyle = "#fff"; ctx.fillText(text, x, y);
   }
   // Reference crater names (IAU), centred on the crater where there is room.
   // Only inside the app, next to the sites.
-  if (!$("labels").checked || appSites.length === 0) return;
+  if (!$("labels").checked || !EMBED) return;
   ctx.font = `italic ${11 * s}px system-ui`;
   for (const f of meta.features) {
     const p = toScreen(f.x, f.y), w = ctx.measureText(f.name).width;
@@ -546,7 +547,7 @@ function updateReadout(ev) {
   }
   let pos = fmtPos(toLatLon(w.x, w.y), w.x, w.y);
   const site = siteNear(ev.offsetX * dpr(), ev.offsetY * dpr());
-  if (site) pos = `${site.name}  ·  ${pos}`;
+  if (site) pos = `${site.name}${site.kind ? ` (${site.kind})` : ""}  ·  ${pos}`;
   if (selMask) pos += selMask[pixelIndex(w.x, w.y)] ? "  ·  inside selection" : "  ·  outside selection";
   $("rPos").textContent = pos;
 }

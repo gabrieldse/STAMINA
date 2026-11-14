@@ -20,7 +20,6 @@ import type {
 
 import { DEFAULT_TEMPERATURE_CONFIG } from "../../types/temperature";
 
-import type { LandingSite } from "../../types/sites";
 
 import type {
   TemperatureConfig,
@@ -130,15 +129,10 @@ export default function LunarExplorer() {
     setError("");
   }
 
-  // Pick a named landing site from the list
-  function selectLandingSite(site: LandingSite) {
-    changeSite({
-      id: site.id,
-      name: site.name,
-      latitude: site.latitude,
-      longitude: site.longitude,
-      details: site,
-    });
+  // Deselect the site (e.g. when it is switched off on the map)
+  function clearSite() {
+    setSelectedSite(null);
+    clearResults();
   }
 
   // Change selected lunar site
@@ -266,7 +260,7 @@ export default function LunarExplorer() {
             selectedSite={selectedSite}
             filters={filters}
             onSiteSelect={changeSite}
-            onLandingSiteSelect={selectLandingSite}
+            onSiteClear={clearSite}
             temperature={temperature}
             onTemperatureSelection={setTemperatureSelection}
           />

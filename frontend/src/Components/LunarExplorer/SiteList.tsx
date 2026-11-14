@@ -1,44 +1,43 @@
 
 import { useState } from "react";
 
-import { LANDING_SITES, isOnPolarMap } from "../../types/sites";
-import type { LandingSite } from "../../types/sites";
-
 import "./SiteList.css";
 
-type Props = {
-  selectedId: string | null;
-  onSelect: (site: LandingSite) => void;
+export type SiteGroup = {
+  key: string;
+  title: string;
+  note: string;
+  items: { id: string; name: string; color: string }[];
+  startOpen: boolean;
 };
 
-const GROUPS = [
-  {
-    title: "Artemis III",
-    note: "On the map",
-    sites: LANDING_SITES.filter(isOnPolarMap),
-    startOpen: true,
-  },
-  {
-    title: "Apollo",
-    note: "Off the map",
-    sites: LANDING_SITES.filter((site) => !isOnPolarMap(site)),
-    startOpen: false,
-  },
-];
+type Props = {
+  groups: SiteGroup[];
+  hiddenIds: Set<string>;
+  selectedId: string | null;
+  onToggleSite: (id: string) => void;
+  onToggleGroup: (ids: string[]) => void;
+};
 
-// Collapsible site menu over the right side of the map, like the
-// Website draft's mission menu.
-export default function SiteList({ selectedId, onSelect }: Props) {
+// Collapsible site menu over the right side of the map, like the Website
+// draft's mission menu: clicking a site switches it on or off, and each
+// group has a switch for all of its sites.
+export default function SiteList({
+  groups,
+  hiddenIds,
+  selectedId,
+  onToggleSite,
+  onToggleGroup,
+}: Props) {
   const [isOpen, setIsOpen] = useState(true);
-  // Group titles fold their lists; Apollo starts folded (not on the polar map).
   const [openGroups, setOpenGroups] = useState(
-    () => new Set(GROUPS.filter((group) => group.startOpen).map((group) => group.title))
+    () => new Set(groups.filter((group) => group.startOpen).map((group) => group.key))
   );
 
-  function toggleGroup(title: string) {
+  function toggleFold(key: string) {
     const next = new Set(openGroups);
-    if (next.has(title)) next.delete(title);
-    else next.add(title);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
     setOpenGroups(next);
   }
 
@@ -54,37 +53,65 @@ export default function SiteList({ selectedId, onSelect }: Props) {
         <span aria-hidden="true">☰</span>
       </button>
 
-      {isOpen && GROUPS.map((group) => (
-        <div className="site-list-group" key={group.title}>
-          <button
-            type="button"
-            className="site-list-heading"
-            onClick={() => toggleGroup(group.title)}
-            aria-expanded={openGroups.has(group.title)}
-          >
-            <span>
-              {openGroups.has(group.title) ? "▾" : "▸"} {group.title}
-            </span>
-            <small>{group.note}</small>
-          </button>
+      {isOpen && groups.map((group) => {
+        const ids = group.items.map((item) => item.id);
+        const allOn = ids.length > 0 && ids.every((id) => !hiddenIds.has(id));
+        const folded = !openGroups.has(group.key);
 
-          {openGroups.has(group.title) && group.sites.map((site) => (
-            <button
-              key={site.id}
-              type="button"
-              className={
-                "site-list-item" +
-                (site.id === selectedId ? " active" : "")
-              }
-              aria-pressed={site.id === selectedId}
-              onClick={() => onSelect(site)}
-            >
-              <i style={{ background: site.color, color: site.color }} />
-              <span>{site.name}</span>
-            </button>
-          ))}
-        </div>
-      ))}
+        return (
+          <div className="site-list-group" key={group.key}>
+            <div className="site-list-heading">
+              <button
+                type="button"
+                className="site-list-fold"
+                onClick={() => toggleFold(group.key)}
+                aria-expanded={!folded}
+              >
+                {folded ? "▸" : "▾"} {group.title}
+              </button>
+
+              <label className="site-list-switch" title={allOn ? "Turn all off" : "Turn all on"}>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  checked={allOn}
+                  disabled={ids.length === 0}
+                  onChange={() => onToggleGroup(ids)}
+                  aria-label={`Show all ${group.title} sites`}
+                />
+                <span />
+              </label>
+            </div>
+
+            {!folded && (
+              <>
+                <small className="site-list-note">{group.note}</small>
+
+                {group.items.map((item) => {
+                  const off = hiddenIds.has(item.id);
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={
+                        "site-list-item" +
+                        (off ? " off" : "") +
+                        (item.id === selectedId ? " active" : "")
+                      }
+                      aria-pressed={!off}
+                      title={off ? "Turn on" : "Turn off"}
+                      onClick={() => onToggleSite(item.id)}
+                    >
+                      <i style={{ background: item.color, color: item.color }} />
+                      <span>{item.name}</span>
+                    </button>
+                  );
+                })}
+              </>
+            )}
+          </div>
+        );
+      })}
     </aside>
   );
 }
