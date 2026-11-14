@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>South Pole Temperatures</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --bg: #0e1014; --panel: rgba(22, 25, 31, 0.92); --border: #2c313b; --field: #1a1e25;
+    --text: #e6e8eb; --muted: #9aa1ab; --accent: #00e5ff; --select: #39ff8a; --on: #3a4252;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+  #map { position: fixed; inset: 0; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+  #map.dragging { cursor: grabbing; }
+  .panel { position: fixed; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 14px; }
+  #controls { top: 12px; left: 12px; width: 300px; max-height: calc(100% - 120px); overflow-y: auto; }
+  h1 { font-size: 15px; margin: 0 0 2px; font-weight: 600; }
+  .sub { color: var(--muted); font-size: 11px; }
+  .label { display: block; color: var(--muted); font-size: 11px; margin: 12px 0 5px;
+    text-transform: uppercase; letter-spacing: 0.04em; }
+  select, input[type=number] { background: var(--field); color: var(--text); border: 1px solid var(--border);
+    border-radius: 5px; padding: 4px 6px; font: inherit; }
+  input[type=number] { width: 64px; }
+  input[type=range] { width: 100%; margin: 0; accent-color: var(--accent); }
+  .row { display: flex; gap: 6px; align-items: center; }
+  .check { display: flex; gap: 6px; align-items: center; font-size: 12px; margin-top: 6px; cursor: pointer; }
+
+  /* Segmented buttons: checkboxes (seasons) and radios (statistic) styled as pills. */
+  .seg { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; flex: 1; }
+  .seg label { flex: 1; position: relative; cursor: pointer; }
+  .seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .seg span { display: block; text-align: center; padding: 4px 2px; font-size: 12px; color: var(--muted);
+    background: var(--field); border-left: 1px solid var(--border); user-select: none; }
+  .seg label:first-child span { border-left: 0; }
+  .seg input:checked + span { background: var(--on); color: var(--text); font-weight: 600; }
+  .seg input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .key { display: grid; gap: 5px; }
+
+  #colorbar { width: 100%; height: 10px; border-radius: 3px; display: block; margin-top: 8px; }
+  .ticks { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px;
+    font-variant-numeric: tabular-nums; }
+  .slider { display: grid; grid-template-columns: 30px 1fr 50px; gap: 6px; align-items: center;
+    font-size: 11px; color: var(--muted); }
+  .slider output { text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+
+  .section { border-top: 1px solid var(--border); margin-top: 12px; }
+  .cond { border: 1px solid var(--border); border-radius: 6px; padding: 7px; margin-top: 7px; display: grid; gap: 5px; }
+  /* Dual-handle range: two overlapping range inputs, only their thumbs take the pointer. */
+  .range-head { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+  .range-head output { color: var(--text); font-variant-numeric: tabular-nums; }
+  .dual { position: relative; height: 20px; }
+  .dual .track, .dual .fill { position: absolute; top: 8px; height: 4px; border-radius: 2px; }
+  .dual .track { left: 0; right: 0; background: var(--border); }
+  .dual .fill { background: var(--select); }
+  .dual input[type=range] { position: absolute; inset: 0; height: 20px; background: none; pointer-events: none;
+    -webkit-appearance: none; appearance: none; }
+  .dual input::-webkit-slider-runnable-track { background: none; }
+  .dual input::-moz-range-track { background: none; }
+  .dual input::-webkit-slider-thumb { -webkit-appearance: none; pointer-events: auto; width: 14px; height: 14px;
+    border-radius: 50%; background: var(--select); border: 2px solid var(--bg); cursor: pointer; }
+  .dual input::-moz-range-thumb { pointer-events: auto; width: 12px; height: 12px; border-radius: 50%;
+    background: var(--select); border: 2px solid var(--bg); cursor: pointer; }
+  .dual input:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--accent); }
+  .icon-btn { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 0 2px; }
+  .icon-btn:disabled { opacity: 0.3; cursor: default; }
+  .btn { margin-top: 7px; width: 100%; background: var(--field); color: var(--text); border: 1px dashed var(--border);
+    border-radius: 5px; padding: 4px; font: inherit; cursor: pointer; }
+  .btn:hover { border-color: var(--select); }
+  #selStats { margin-top: 7px; font-variant-numeric: tabular-nums; }
+  #selStats b { color: var(--select); }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--select);
+    vertical-align: -1px; margin-right: 4px; }
+  details { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 8px; }
+  summary { cursor: pointer; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .hint { color: var(--muted); font-size: 11px; margin-top: 10px; }
+
+  #readout { bottom: 12px; left: 12px; min-width: 300px; font-variant-numeric: tabular-nums; }
+  #readout .t { font-size: 20px; font-weight: 600; }
+  #pinned { top: 12px; right: 12px; width: 300px; display: none; font-variant-numeric: tabular-nums; }
+  #pinned table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  #pinned th, #pinned td { padding: 3px 0; border-top: 1px solid var(--border); text-align: right; font-weight: normal; }
+  #pinned th { color: var(--muted); font-size: 11px; }
+  #pinned th:first-child, #pinned td:first-child { text-align: left; color: var(--muted); }
+  #pinned .close { float: right; }
+  #status { position: fixed; inset: 0; display: grid; place-items: center; color: var(--muted); pointer-events: none; }
+  @media (max-width: 640px) {
+    #controls { width: calc(100% - 24px); max-height: 45%; }
+    #readout { min-width: 0; right: 12px; }
+    #pinned { top: auto; bottom: 110px; left: 12px; right: 12px; width: auto; }
+  }
+</style>
+</head>
+<body>
+<canvas id="map"></canvas>
+<div id="status">Loading…</div>
+
+<div class="panel" id="controls">
+  <h1>Lunar south pole temperatures</h1>
+  <div class="sub" id="source"></div>
+
+  <span class="label">Layer</span>
+  <div class="key" id="layerKey"></div>
+  <canvas id="colorbar" width="256" height="1"></canvas>
+  <div class="ticks"><span id="tmin"></span><span id="tmid"></span><span id="tmax"></span></div>
+
+  <span class="label">Ice stability threshold</span>
+  <div class="slider"><span>&lt;</span><input type="range" id="threshold" min="40" max="200" step="5"
+    aria-label="Ice stability threshold"><output id="thresholdValue"></output></div>
+  <label class="check"><input type="checkbox" id="outline" checked>Outline colder areas (cyan)</label>
+
+  <div class="section">
+    <span class="label">Selection by interval</span>
+    <label class="check"><input type="checkbox" id="selOn"><span class="swatch"></span>Highlight pixels inside the intervals</label>
+    <div id="selBox" style="display:none">
+      <div class="row" style="margin-top:7px">
+        <div class="seg" id="selOp">
+          <label><input type="radio" name="selOp" value="and" checked><span>AND all</span></label>
+          <label><input type="radio" name="selOp" value="or"><span>OR any</span></label>
+        </div>
+      </div>
+      <div id="conditions"></div>
+      <button class="btn" id="addCond">+ Add condition</button>
+      <label class="check"><input type="checkbox" id="selOnly">Hide everything outside the selection</label>
+      <div id="selStats"></div>
+    </div>
+  </div>
+
+  <details>
+    <summary>Display</summary>
+    <span class="label">Color range</span>
+    <div class="row">
+      <select id="rangeMode" style="flex:1">
+        <option value="fixed">Shared 20–320 K</option>
+        <option value="layer">This layer (0.1–99.9%)</option>
+        <option value="custom">Custom</option>
+      </select>
+    </div>
+    <div class="row" id="customRange" style="display:none; margin-top:6px">
+      <input type="number" id="vmin" value="20" step="5"> to <input type="number" id="vmax" value="320" step="5"> K
+    </div>
+    <label class="check"><input type="checkbox" id="grid" checked>Latitude / longitude grid</label>
+    <label class="check"><input type="checkbox" id="labels" checked>Crater names</label>
+  </details>
+
+  <div class="hint">Scroll to zoom, drag to pan, click a point to compare all layers, double-click to reset.</div>
+</div>
+
+<div class="panel" id="readout">
+  <div class="t" id="rT">–</div>
+  <div id="rPos" style="color:var(--muted)">Move the mouse over the map</div>
+</div>
+
+<div class="panel" id="pinned">
+  <button class="icon-btn close" id="unpin" aria-label="Close">×</button>
+  <strong>Pinned point</strong>
+  <div id="pPos" style="color:var(--muted)"></div>
+  <table id="pTable"></table>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const canvas = $("map"), ctx = canvas.getContext("2d");
+const SEASONS = [["summer", "Summer"], ["winter", "Winter"]];
+const STATS = [["avg", "Avg"], ["min", "Min"], ["max", "Max"], ["amplitude", "Amplitude"]];
+const RANGE_MIN = 0, RANGE_MAX = 450;  // kelvin, interval slider limits
+let meta, pinned = null;
+const grids = {};       // id -> Uint16Array (kelvin * scale, 0 = no data)
+const statsCache = {};  // id -> [p0.1, p99.9]
+// A layer is a set of seasons plus a statistic; both seasons together give the annual layer.
+const current = { seasons: ["summer"], stat: "max" };
+// Interval selection: each condition keeps pixels with lo <= layer value <= hi (kelvin).
+const conditions = [];
+let selMask = null;
+const image = document.createElement("canvas"), maskImage = document.createElement("canvas");
+const view = { x: 0, y: 0, k: 1 };  // centre in metres, pixels per metre
+
+// ---------- geometry: south polar stereographic, sphere R ----------
+function toLatLon(x, y) {
+  const r = Math.hypot(x, y);
+  const colat = 2 * Math.atan(r / (2 * meta.moonRadiusM));
+  return { lat: -90 + colat * 180 / Math.PI, lon: Math.atan2(x, y) * 180 / Math.PI };
+}
+function toXY(lat, lon) {
+  const r = 2 * meta.moonRadiusM * Math.tan((90 + lat) * Math.PI / 360);
+  const a = lon * Math.PI / 180;
+  return { x: r * Math.sin(a), y: r * Math.cos(a) };
+}
+const dpr = () => window.devicePixelRatio || 1;
+const toScreen = (x, y) => ({ sx: canvas.width / 2 + (x - view.x) * view.k, sy: canvas.height / 2 - (y - view.y) * view.k });
+const toWorld = (sx, sy) => ({ x: view.x + (sx - canvas.width / 2) / view.k, y: view.y - (sy - canvas.height / 2) / view.k });
+function pixelIndex(x, y) {
+  const px = 2 * meta.radiusM / meta.size;
+  const col = Math.floor((x + meta.radiusM) / px), row = Math.floor((meta.radiusM - y) / px);
+  if (col < 0 || row < 0 || col >= meta.size || row >= meta.size || Math.hypot(x, y) > meta.radiusM) return -1;
+  return row * meta.size + col;
+}
+
+// ---------- layers ----------
+const isAnnual = (key) => key.seasons.length === 2;
+const keyId = (key) => `${isAnnual(key) ? "annual" : key.seasons[0]}_${key.stat}`;
+function keyName(key) {
+  const season = isAnnual(key) ? "Annual" : SEASONS.find(([s]) => s === key.seasons[0])[1];
+  return `${season} ${STATS.find(([s]) => s === key.stat)[1].toLowerCase()}`;
+}
+
+async function fetchGrid(id) {
+  if (!grids[id]) grids[id] = new Uint16Array(await (await fetch(`data/${id}.bin`)).arrayBuffer());
+  return grids[id];
+}
+// Annual layers combine the two seasons: max of maxima, min of minima, mean of averages,
+// and amplitude = annual max - annual min.
+async function getGrid(key) {
+  const id = keyId(key);
+  if (grids[id]) return grids[id];
+  if (!isAnnual(key)) return fetchGrid(id);
+  let out;
+  if (key.stat === "amplitude") {
+    const [hi, lo] = await Promise.all([getGrid({ ...key, stat: "max" }), getGrid({ ...key, stat: "min" })]);
+    out = hi.map((h, i) => (h && lo[i] ? Math.max(1, h - lo[i]) : 0));
+  } else {
+    const [s, w] = await Promise.all(["summer", "winter"].map((season) => fetchGrid(`${season}_${key.stat}`)));
+    const f = { max: Math.max, min: Math.min, avg: (a, b) => Math.round((a + b) / 2) }[key.stat];
+    out = s.map((a, i) => (!a ? w[i] : !w[i] ? a : f(a, w[i])));
+  }
+  return (grids[id] = out);
+}
+function percentiles(id) {
+  if (!statsCache[id]) {
+    const single = meta.layers.find((l) => l.id === id);
+    if (single) statsCache[id] = [single.p01, single.p999];
+    else {
+      const sample = [];
+      for (let i = 0; i < grids[id].length; i += 7) if (grids[id][i]) sample.push(grids[id][i] / meta.scale);
+      sample.sort((a, b) => a - b);
+      statsCache[id] = [sample[Math.floor(sample.length * 0.001)], sample[Math.floor(sample.length * 0.999)]];
+    }
+  }
+  return statsCache[id];
+}
+function valueAt(grid, x, y) {
+  const i = pixelIndex(x, y);
+  if (i < 0 || !grid[i]) return null;
+  return grid[i] / meta.scale;
+}
+
+// Season checkboxes + statistic radios, shared by the main layer and each condition.
+const seasonPills = (key) => `<div class="seg" data-part="seasons">${SEASONS.map(([v, l]) =>
+  `<label><input type="checkbox" value="${v}"${key.seasons.includes(v) ? " checked" : ""}><span>${l}</span></label>`).join("")}</div>`;
+const statPills = (prefix, key) => `<div class="seg" data-part="stat">${STATS.map(([v, l]) =>
+  `<label><input type="radio" name="${prefix}-stat" value="${v}"${key.stat === v ? " checked" : ""}><span>${l}</span></label>`).join("")}</div>`;
+function bindKeyControls(el, key, onChange) {
+  el.querySelectorAll('[data-part="seasons"] input').forEach((input) => input.addEventListener("change", () => {
+    const checked = [...el.querySelectorAll('[data-part="seasons"] input:checked')].map((i) => i.value);
+    if (checked.length === 0) { input.checked = true; return; }  // keep at least one season
+    key.seasons = checked;
+    onChange();
+  }));
+  el.querySelectorAll('[data-part="stat"] input').forEach((input) => input.addEventListener("change", () => {
+    key.stat = input.value;
+    onChange();
+  }));
+}
+
+// ---------- rendering ----------
+function colorRange() {
+  const mode = $("rangeMode").value;
+  if (mode === "layer") return percentiles(keyId(current));
+  if (mode === "custom") return [+$("vmin").value, +$("vmax").value];
+  return current.stat === "amplitude" ? [0, 300] : [20, 320];
+}
+function buildImage() {
+  const n = meta.size, grid = grids[keyId(current)], lut = meta.colormap;
+  const [lo, hi] = colorRange(), span = hi - lo || 1;
+  const thr = +$("threshold").value * meta.scale;
+  const outline = $("outline").checked && current.stat !== "amplitude";
+  image.width = image.height = n;
+  const ictx = image.getContext("2d"), img = ictx.createImageData(n, n), d = img.data;
+  for (let i = 0; i < n * n; i++) {
+    const v = grid[i];
+    if (v === 0) continue;  // transparent: no data
+    let r, g, b;
+    if (outline && v < thr && isEdge(grid, i, n, thr)) { r = 0; g = 229; b = 255; }
+    else {
+      const t = Math.min(255, Math.max(0, Math.round(((v / meta.scale - lo) / span) * 255)));
+      [r, g, b] = lut[t];
+    }
+    d[4 * i] = r; d[4 * i + 1] = g; d[4 * i + 2] = b; d[4 * i + 3] = 255;
+  }
+  ictx.putImageData(img, 0, 0);
+  drawColorbar(lo, hi);
+  draw();
+}
+function isEdge(grid, i, n, thr) {
+  const row = (i / n) | 0, col = i % n;
+  for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+    const r = row + dr, c = col + dc;
+    if (r < 0 || c < 0 || r >= n || c >= n) continue;
+    const w = grid[r * n + c];
+    if (w !== 0 && w >= thr) return true;
+  }
+  return false;
+}
+function drawColorbar(lo, hi) {
+  const cb = $("colorbar").getContext("2d"), img = cb.createImageData(256, 1);
+  meta.colormap.forEach(([r, g, b], i) => img.data.set([r, g, b, 255], 4 * i));
+  cb.putImageData(img, 0, 0);
+  $("tmin").textContent = `${lo.toFixed(0)} K`;
+  $("tmid").textContent = `${((lo + hi) / 2).toFixed(0)}`;
+  $("tmax").textContent = `${hi.toFixed(0)} K`;
+}
+
+function draw() {
+  const W = canvas.width, H = canvas.height, R = meta.radiusM, s = dpr();
+  ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--bg");
+  ctx.fillRect(0, 0, W, H);
+  const c = toScreen(0, 0), rpx = R * view.k;
+
+  ctx.save();
+  ctx.beginPath(); ctx.arc(c.sx, c.sy, rpx, 0, 2 * Math.PI); ctx.clip();
+  ctx.fillStyle = "#000"; ctx.fill();
+  ctx.imageSmoothingEnabled = (2 * rpx) / meta.size < 2;  // crisp pixels when zoomed in
+  ctx.drawImage(image, c.sx - rpx, c.sy - rpx, 2 * rpx, 2 * rpx);
+  if (selMask) ctx.drawImage(maskImage, c.sx - rpx, c.sy - rpx, 2 * rpx, 2 * rpx);
+
+  if ($("grid").checked) {
+    ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.lineWidth = s;
+    ctx.fillStyle = "rgba(255,255,255,0.8)"; ctx.font = `${11 * s}px system-ui`; ctx.textAlign = "center";
+    for (const lat of [-82, -84, -86, -88, -89]) {
+      const r = toXY(lat, 0).y * view.k;
+      ctx.beginPath(); ctx.arc(c.sx, c.sy, r, 0, 2 * Math.PI); ctx.stroke();
+      ctx.fillText(`${-lat}°S`, c.sx, c.sy + r - 3 * s);
+    }
+    for (let lon = -150; lon <= 180; lon += 30) {
+      const e = toXY(meta.latLimit, lon), p = toScreen(e.x, e.y);
+      ctx.beginPath(); ctx.moveTo(c.sx, c.sy); ctx.lineTo(p.sx, p.sy); ctx.stroke();
+    }
+  }
+  ctx.restore();
+
+  ctx.strokeStyle = "#5a6270"; ctx.lineWidth = s;
+  ctx.beginPath(); ctx.arc(c.sx, c.sy, rpx, 0, 2 * Math.PI); ctx.stroke();
+  if ($("grid").checked) {
+    ctx.fillStyle = "#9aa1ab"; ctx.font = `${11 * s}px system-ui`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    for (let lon = -150; lon <= 180; lon += 30) {
+      const a = lon * Math.PI / 180;
+      const label = lon === 0 || lon === 180 ? `${lon}°` : `${Math.abs(lon)}°${lon > 0 ? "E" : "W"}`;
+      ctx.fillText(label, c.sx + (rpx + 18 * s) * Math.sin(a), c.sy - (rpx + 18 * s) * Math.cos(a));
+    }
+    ctx.textBaseline = "alphabetic";
+  }
+
+  if ($("labels").checked) {
+    ctx.font = `600 ${12 * s}px system-ui`; ctx.textAlign = "left"; ctx.lineJoin = "round";
+    for (const f of meta.features) {
+      const p = toScreen(f.x, f.y);
+      ctx.strokeStyle = "#000"; ctx.lineWidth = 3 * s;
+      ctx.beginPath(); ctx.arc(p.sx, p.sy, 4 * s, 0, 2 * Math.PI);
+      ctx.stroke(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5 * s; ctx.stroke();
+      ctx.strokeStyle = "#000"; ctx.lineWidth = 3 * s;
+      ctx.strokeText(f.name, p.sx + 7 * s, p.sy - 5 * s);
+      ctx.fillStyle = "#fff"; ctx.fillText(f.name, p.sx + 7 * s, p.sy - 5 * s);
+    }
+  }
+  if (pinned) {
+    const p = toScreen(pinned.x, pinned.y);
+    ctx.strokeStyle = "#00e5ff"; ctx.lineWidth = 2 * s;
+    ctx.beginPath(); ctx.arc(p.sx, p.sy, 7 * s, 0, 2 * Math.PI); ctx.stroke();
+  }
+  drawScaleBar();
+}
+function drawScaleBar() {
+  const s = dpr(), target = 120 * s / view.k;  // metres in ~120 css px
+  const mag = 10 ** Math.floor(Math.log10(target));
+  const len = [5, 2, 1].map((m) => m * mag).find((m) => m <= target);
+  const x = canvas.width - 24 * s - len * view.k, y = canvas.height - 24 * s;
+  ctx.fillStyle = "#e6e8eb"; ctx.fillRect(x, y, len * view.k, 3 * s);
+  ctx.font = `${11 * s}px system-ui`; ctx.textAlign = "center";
+  ctx.fillText(len >= 1000 ? `${len / 1000} km` : `${len} m`, x + len * view.k / 2, y - 6 * s);
+}
+
+// ---------- readout and pinned point ----------
+const fmtPos = ({ lat, lon }, x, y) =>
+  `${Math.abs(lat).toFixed(3)}°S, ${Math.abs(lon).toFixed(2)}°${lon >= 0 ? "E" : "W"}  ·  x ${(x / 1000).toFixed(1)} km, y ${(y / 1000).toFixed(1)} km`;
+
+function updateReadout(ev) {
+  const w = toWorld(ev.offsetX * dpr(), ev.offsetY * dpr());
+  if (Math.hypot(w.x, w.y) > meta.radiusM) { $("rT").textContent = "–"; $("rPos").textContent = "Outside the 80°S cap"; return; }
+  const v = valueAt(grids[keyId(current)], w.x, w.y);
+  $("rT").textContent = v === null ? "no data" : current.stat === "amplitude"
+    ? `${v.toFixed(1)} K swing · ${keyName(current)}`
+    : `${v.toFixed(1)} K (${(v - 273.15).toFixed(0)} °C) · ${keyName(current)}`;
+  let pos = fmtPos(toLatLon(w.x, w.y), w.x, w.y);
+  if (selMask) pos += selMask[pixelIndex(w.x, w.y)] ? "  ·  inside selection" : "  ·  outside selection";
+  $("rPos").textContent = pos;
+}
+async function pin(x, y) {
+  pinned = { x, y };
+  $("pinned").style.display = "block";
+  $("pPos").textContent = fmtPos(toLatLon(x, y), x, y);
+  const cols = [["summer"], ["winter"], ["summer", "winter"]];
+  const rows = [`<tr><th></th><th>Summer</th><th>Winter</th><th>Annual</th></tr>`];
+  for (const [stat, label] of STATS) {
+    const cells = await Promise.all(cols.map(async (seasons) => valueAt(await getGrid({ seasons, stat }), x, y)));
+    rows.push(`<tr><td>${label}</td>${cells.map((v) => `<td>${v === null ? "–" : v.toFixed(1)}</td>`).join("")}</tr>`);
+  }
+  $("pTable").innerHTML = rows.join("") + `<tr><td colspan="4" style="color:var(--muted);font-size:11px">kelvin</td></tr>`;
+  draw();
+}
+
+// ---------- interval selection ----------
+function addCondition() {
+  const key = { seasons: [...current.seasons], stat: current.stat };
+  const [lo, hi] = percentiles(keyId(key));
+  conditions.push({ ...key, lo: Math.floor(lo), hi: Math.ceil(hi) });
+  renderConditions();
+  updateSelection();
+}
+function renderConditions() {
+  $("conditions").innerHTML = conditions.map((c, i) => `
+    <div class="cond" data-i="${i}">
+      <div class="row">${seasonPills(c)}<button class="icon-btn c-remove" aria-label="Remove condition"${conditions.length === 1 ? " disabled" : ""}>×</button></div>
+      ${statPills(`c${i}`, c)}
+      <div class="range-head"><span>Interval</span><output class="c-range">${c.lo}–${c.hi} K</output></div>
+      <div class="dual">
+        <div class="track"></div><div class="fill"></div>
+        <input type="range" class="c-lo" min="${RANGE_MIN}" max="${RANGE_MAX}" step="1" value="${c.lo}" aria-label="Minimum temperature">
+        <input type="range" class="c-hi" min="${RANGE_MIN}" max="${RANGE_MAX}" step="1" value="${c.hi}" aria-label="Maximum temperature">
+      </div>
+    </div>`).join("");
+  document.querySelectorAll(".cond").forEach((el) => {
+    const c = conditions[+el.dataset.i];
+    bindKeyControls(el, c, updateSelection);
+    el.querySelector(".c-remove").onclick = () => { conditions.splice(+el.dataset.i, 1); renderConditions(); updateSelection(); };
+    const lo = el.querySelector(".c-lo"), hi = el.querySelector(".c-hi"), fill = el.querySelector(".fill");
+    const paint = () => {
+      const pct = (v) => (100 * (v - RANGE_MIN)) / (RANGE_MAX - RANGE_MIN);
+      fill.style.left = `${pct(c.lo)}%`;
+      fill.style.width = `${pct(c.hi) - pct(c.lo)}%`;
+      el.querySelector(".c-range").textContent = `${c.lo}–${c.hi} K`;
+      // When the handles meet at the top, keep the min handle reachable.
+      lo.style.zIndex = c.lo > (RANGE_MIN + RANGE_MAX) / 2 ? 2 : 1;
+    };
+    const onSlide = (moved) => {
+      // The handles can't cross: the dragged one stops at the other.
+      if (+lo.value > +hi.value) moved.value = moved === lo ? hi.value : lo.value;
+      c.lo = +lo.value; c.hi = +hi.value;
+      paint();
+      scheduleSelection();
+    };
+    lo.oninput = () => onSlide(lo);
+    hi.oninput = () => onSlide(hi);
+    paint();
+  });
+}
+
+let selectionQueued = false;
+function scheduleSelection() {
+  if (selectionQueued) return;
+  selectionQueued = true;
+  requestAnimationFrame(() => { selectionQueued = false; updateSelection(); });
+}
+async function updateSelection() {
+  if (!$("selOn").checked || conditions.length === 0) { selMask = null; $("selStats").textContent = ""; draw(); return; }
+  const layerGrids = await Promise.all(conditions.map(getGrid));
+  const n = meta.size, N = n * n, hideOutside = $("selOnly").checked;
+  const and = document.querySelector('input[name="selOp"]:checked').value === "and";
+  const bounds = conditions.map((c) => [c.lo * meta.scale, c.hi * meta.scale]);
+  selMask = new Uint8Array(N);
+  maskImage.width = maskImage.height = n;
+  const mctx = maskImage.getContext("2d"), img = mctx.createImageData(n, n), d = img.data;
+  let inside = 0, valid = 0;
+  for (let i = 0; i < N; i++) {
+    let ok = and, hasData = false;
+    for (let k = 0; k < layerGrids.length; k++) {
+      const v = layerGrids[k][i];
+      if (v !== 0) hasData = true;
+      const hit = v !== 0 && v >= bounds[k][0] && v <= bounds[k][1];
+      ok = and ? ok && hit : ok || hit;
+    }
+    if (!hasData) continue;
+    valid++;
+    if (ok) {
+      selMask[i] = 1; inside++;
+      // Tint the selection; lighter when the rest is hidden, so the base colors still show.
+      d[4 * i] = 57; d[4 * i + 1] = 255; d[4 * i + 2] = 138; d[4 * i + 3] = hideOutside ? 90 : 150;
+    } else if (hideOutside) {
+      d[4 * i] = 14; d[4 * i + 1] = 16; d[4 * i + 2] = 20; d[4 * i + 3] = 235;
+    }
+  }
+  mctx.putImageData(img, 0, 0);
+  const pxKm = 2 * meta.radiusM / meta.size / 1000;
+  $("selStats").innerHTML = `<span class="swatch"></span><b>${(inside * pxKm * pxKm).toLocaleString("en", { maximumFractionDigits: 0 })} km²</b>` +
+    ` selected · ${valid ? (100 * inside / valid).toFixed(1) : 0}% of the cap`;
+  draw();
+}
+
+// ---------- interaction ----------
+function resize() {
+  canvas.width = canvas.clientWidth * dpr();
+  canvas.height = canvas.clientHeight * dpr();
+  if (meta) draw();
+}
+function resetView() {
+  view.x = 0; view.y = 0;
+  view.k = 0.45 * Math.min(canvas.width, canvas.height) / meta.radiusM;
+  draw();
+}
+
+let drag = null;
+canvas.addEventListener("pointerdown", (e) => {
+  drag = { sx: e.offsetX, sy: e.offsetY, vx: view.x, vy: view.y, moved: false };
+  canvas.setPointerCapture(e.pointerId); canvas.classList.add("dragging");
+});
+canvas.addEventListener("pointermove", (e) => {
+  if (drag) {
+    const dx = e.offsetX - drag.sx, dy = e.offsetY - drag.sy;
+    if (Math.hypot(dx, dy) > 3) drag.moved = true;
+    view.x = drag.vx - dx * dpr() / view.k; view.y = drag.vy + dy * dpr() / view.k;
+    draw();
+  }
+  updateReadout(e);
+});
+canvas.addEventListener("pointerup", (e) => {
+  canvas.classList.remove("dragging");
+  if (drag && !drag.moved) {
+    const w = toWorld(e.offsetX * dpr(), e.offsetY * dpr());
+    if (Math.hypot(w.x, w.y) <= meta.radiusM) pin(w.x, w.y);
+  }
+  drag = null;
+});
+canvas.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  const before = toWorld(e.offsetX * dpr(), e.offsetY * dpr());
+  const maxK = 40 * meta.size / (2 * meta.radiusM);  // up to 40 screen px per data pixel
+  view.k = Math.min(maxK, Math.max(0.2 * canvas.height / meta.radiusM / 2, view.k * Math.exp(-e.deltaY * 0.0015)));
+  const after = toWorld(e.offsetX * dpr(), e.offsetY * dpr());
+  view.x += before.x - after.x; view.y += before.y - after.y;
+  draw(); updateReadout(e);
+}, { passive: false });
+canvas.addEventListener("dblclick", resetView);
+$("unpin").onclick = () => { pinned = null; $("pinned").style.display = "none"; draw(); };
+
+async function showCurrentLayer() {
+  $("status").textContent = "Loading…"; $("status").style.display = "grid";
+  await getGrid(current);
+  $("status").style.display = "none";
+  buildImage();
+}
+$("rangeMode").onchange = () => {
+  $("customRange").style.display = $("rangeMode").value === "custom" ? "flex" : "none";
+  buildImage();
+};
+for (const id of ["vmin", "vmax", "outline"]) $(id).onchange = buildImage;
+$("threshold").oninput = () => { $("thresholdValue").textContent = `${$("threshold").value} K`; buildImage(); };
+for (const id of ["grid", "labels"]) $(id).onchange = draw;
+$("selOn").onchange = () => {
+  $("selBox").style.display = $("selOn").checked ? "block" : "none";
+  if ($("selOn").checked && conditions.length === 0) addCondition(); else updateSelection();
+};
+$("addCond").onclick = addCondition;
+document.querySelectorAll('input[name="selOp"]').forEach((i) => (i.onchange = updateSelection));
+$("selOnly").onchange = updateSelection;
+window.addEventListener("resize", resize);
+
+(async function init() {
+  try {
+    meta = await (await fetch("data/meta.json")).json();
+  } catch {
+    $("status").textContent = "No data: run `uv run diviner_web.py` and open the URL it prints.";
+    return;
+  }
+  $("source").textContent = `${meta.source} · ${(2 * meta.radiusM / meta.size).toFixed(0)} m/px`;
+  $("layerKey").innerHTML = seasonPills(current) + statPills("main", current);
+  bindKeyControls($("layerKey"), current, showCurrentLayer);
+  $("threshold").value = meta.iceThresholdK;
+  $("thresholdValue").textContent = `${meta.iceThresholdK} K`;
+  resize(); resetView();
+  await showCurrentLayer();
+})();
+</script>
+</body>
+</html>
