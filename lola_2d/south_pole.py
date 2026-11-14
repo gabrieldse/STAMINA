@@ -244,8 +244,8 @@ def main() -> None:
     parser.add_argument("--force", action="store_true", help=f"allow images larger than {MAX_SIZE_PX} px")
     args = parser.parse_args()
 
-    if not -90 < args.lat_limit < 0:
-        parser.error("--lat-limit must be between -90 and 0")
+    if not -90 < args.lat_limit <= 0:
+        parser.error("--lat-limit must be greater than -90 (the pole itself is a single point) and at most 0 (the equator)")
     diameter = 2 * stereo_radius(args.lat_limit)
     res = args.res or math.ceil(diameter / DEFAULT_SIZE_PX)
     size = math.ceil(diameter / res)
