@@ -1,0 +1,197 @@
+
+/* FOLDABLE TEMPERATURE SECTION */
+
+.temperature-fold,
+.temperature-subfold {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.temperature-subfold {
+  margin-top: 6px;
+  color: #9fb2cb;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.temperature-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.temperature-layer {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+/* SEGMENTED RADIO BUTTONS */
+
+.temperature-segmented {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid #2a415e;
+  border-radius: 7px;
+}
+
+.temperature-segmented label {
+  position: relative;
+  flex: 1;
+  cursor: pointer;
+}
+
+.temperature-segmented input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.temperature-segmented span {
+  display: block;
+  padding: 6px 2px;
+  border-left: 1px solid #2a415e;
+  background: #0a1728;
+  color: #9fb2cb;
+  font-size: 12px;
+  text-align: center;
+  user-select: none;
+}
+
+.temperature-segmented label:first-child span {
+  border-left: 0;
+}
+
+.temperature-segmented input:checked + span {
+  background: #22415f;
+  color: #edf4ff;
+  font-weight: 600;
+}
+
+.temperature-segmented input:focus-visible + span {
+  outline: 2px solid #75baff;
+  outline-offset: -2px;
+}
+
+/* PLACEHOLDERS FOR DATA NOT AVAILABLE YET */
+
+.temperature-todo {
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  color: #6f86a3;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.temperature-todo span {
+  color: #d9a441;
+  font-family: ui-monospace, monospace;
+}
+
+/* SLIDERS */
+
+.temperature-range-heading {
+  display: flex;
+  justify-content: space-between;
+  color: #9fb2cb;
+  font-size: 12px;
+}
+
+.temperature-range-heading strong {
+  color: #85c2ff;
+  font-variant-numeric: tabular-nums;
+}
+
+.temperature-selection-toggle {
+  font-size: 13px;
+}
+
+.temperature-range {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.temperature-dual {
+  position: relative;
+  height: 20px;
+}
+
+.temperature-dual-track,
+.temperature-dual-fill {
+  position: absolute;
+  top: 8px;
+  height: 4px;
+  border-radius: 2px;
+}
+
+.temperature-dual-track {
+  left: 0;
+  right: 0;
+  background: #2a415e;
+}
+
+.temperature-dual-fill {
+  background: #39ff8a;
+}
+
+.temperature-dual input[type="range"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 20px;
+  margin: 0;
+  background: none;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.temperature-dual input::-webkit-slider-runnable-track {
+  background: none;
+}
+
+.temperature-dual input::-moz-range-track {
+  background: none;
+}
+
+.temperature-dual input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #101e31;
+  border-radius: 50%;
+  background: #39ff8a;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.temperature-dual input::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #101e31;
+  border-radius: 50%;
+  background: #39ff8a;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.temperature-stats {
+  margin: 0;
+  color: #39ff8a;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}

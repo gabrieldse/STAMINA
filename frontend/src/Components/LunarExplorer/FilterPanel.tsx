@@ -1,18 +1,29 @@
 
 import { filterRegistry } from "../../filters/filterRegistry";
+import TemperatureFilter from "./TemperatureFilter";
 import type {
   FilterStates,
   FilterValue,
 } from "../../types/explorer";
+import type {
+  TemperatureConfig,
+  TemperatureSelectionStats,
+} from "../../types/temperature";
 
 type Props = {
   filters: FilterStates;
   onChange: (filters: FilterStates) => void;
+  temperature: TemperatureConfig;
+  onTemperatureChange: (config: TemperatureConfig) => void;
+  temperatureSelection: TemperatureSelectionStats | null;
 };
 
 export default function FilterPanel({
   filters,
   onChange,
+  temperature,
+  onTemperatureChange,
+  temperatureSelection,
 }: Props) {
   function updateFilter(
     id: string,
@@ -117,6 +128,13 @@ export default function FilterPanel({
           </div>
         );
       })}
+
+      {/* SOUTH POLE TEMPERATURE LAYER (drives the map) */}
+      <TemperatureFilter
+        config={temperature}
+        onChange={onTemperatureChange}
+        selectionStats={temperatureSelection}
+      />
     </aside>
   );
 }

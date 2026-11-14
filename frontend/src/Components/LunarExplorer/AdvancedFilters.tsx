@@ -13,6 +13,10 @@ import type {
   CustomFilterEvaluation,
 } from "../../types/customFilters";
 
+import type {
+  TemperatureConfig,
+} from "../../types/temperature";
+
 import "./AdvancedFilters.css";
 
 type Props = {
@@ -20,7 +24,46 @@ type Props = {
   onChange: (rules: CustomFilterRule[]) => void;
   evaluations: CustomFilterEvaluation[];
   durationDays: number;
+  temperature: TemperatureConfig;
 };
+
+// Configuration file: the temperature settings and, when present,
+// the custom rules (same format as the upload).
+function buildConfiguration(
+  temperature: TemperatureConfig,
+  rules: CustomFilterRule[]
+) {
+  return {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    southPoleTemperatures: {
+      layer: {
+        season: temperature.season,
+        statistic: temperature.statistic,
+      },
+      iceStabilityThresholdK: temperature.iceStabilityThresholdK,
+      selection: {
+        enabled: temperature.selectionEnabled,
+        temperatureK: temperature.temperatureK,
+        amplitudeK: temperature.amplitudeK,
+      },
+    },
+    ...(rules.length > 0 ? { rules } : {}),
+  };
+}
+
+function downloadJson(data: unknown, fileName: string) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 const metricKeys = Object.keys(
   CUSTOM_METRICS
@@ -152,6 +195,7 @@ export default function AdvancedFilters({
   onChange,
   evaluations,
   durationDays,
+  temperature,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [fileName, setFileName] = useState("");
@@ -252,6 +296,30 @@ export default function AdvancedFilters({
             Add custom requirements manually or
             import a JSON filter configuration.
           </p>
+
+          {/* CONFIGURATION EXPORT */}
+          <div className="advanced-upload">
+            <strong>Export Configuration</strong>
+
+            <button
+              type="button"
+              className="advanced-add"
+              onClick={() =>
+                downloadJson(
+                  buildConfiguration(temperature, rules),
+                  "stamina-configuration.json"
+                )
+              }
+            >
+              ⤓ Download JSON
+            </button>
+
+            <small>
+              South pole temperatures: layer, ice stability
+              threshold, temperature and amplitude intervals.
+              Custom rules are included when present.
+            </small>
+          </div>
 
           {/* FILE UPLOAD */}
           <div className="advanced-upload">

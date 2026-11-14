@@ -18,6 +18,13 @@ import type {
   CustomFilterRule,
 } from "../../types/customFilters";
 
+import { DEFAULT_TEMPERATURE_CONFIG } from "../../types/temperature";
+
+import type {
+  TemperatureConfig,
+  TemperatureSelectionStats,
+} from "../../types/temperature";
+
 import "./LunarExplorer.css";
 
 // Rows and columns of the surface temperature table
@@ -48,6 +55,13 @@ export default function LunarExplorer() {
   // Custom filters (manual or uploaded JSON)
   const [customRules, setCustomRules] =
     useState<CustomFilterRule[]>([]);
+
+  // South pole temperature layer and selection shown on the map
+  const [temperature, setTemperature] =
+    useState<TemperatureConfig>(DEFAULT_TEMPERATURE_CONFIG);
+
+  const [temperatureSelection, setTemperatureSelection] =
+    useState<TemperatureSelectionStats | null>(null);
 
   // Analysis parameters
   const [date, setDate] = useState("2032-11-01");
@@ -194,6 +208,9 @@ export default function LunarExplorer() {
         <FilterPanel
           filters={filters}
           onChange={changeFilters}
+          temperature={temperature}
+          onTemperatureChange={setTemperature}
+          temperatureSelection={temperatureSelection}
         />
 
         {/* ADVANCED / UPLOADED FILTERS */}
@@ -204,6 +221,7 @@ export default function LunarExplorer() {
             result?.customFilterResults ?? []
           }
           durationDays={durationDays}
+          temperature={temperature}
         />
 
       </aside>
@@ -235,6 +253,8 @@ export default function LunarExplorer() {
             selectedSite={selectedSite}
             filters={filters}
             onSiteSelect={changeSite}
+            temperature={temperature}
+            onTemperatureSelection={setTemperatureSelection}
           />
         </div>
 

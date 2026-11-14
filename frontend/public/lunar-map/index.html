@@ -80,7 +80,8 @@
   .title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
   #controls.collapsed #controlsBody { display: none; }
   /* Embedded in the STAMINA app (?embed=1): narrower panels; the app shows the pinned values. */
-  body.embed #controls { width: 250px; padding: 10px 12px; max-height: calc(100% - 90px); }
+  /* In the app the Temperature filter drives the map, so the viewer's own controls are hidden. */
+  body.embed #controls { display: none; }
   body.embed #readout { min-width: 0; max-width: calc(100% - 24px); padding: 8px 10px; }
   body.embed #readout .t { font-size: 15px; }
   body.embed #pinned { display: none !important; }
@@ -107,7 +108,7 @@
 
 <div class="panel" id="controls">
   <div class="title-row">
-    <h1>Lunar south pole temperatures</h1>
+    <h1>South pole temperatures</h1>
     <button class="icon-btn" id="collapse" aria-expanded="true" aria-controls="controlsBody" title="Collapse controls">▴</button>
   </div>
   <div id="controlsBody">
@@ -262,15 +263,13 @@ function valueAt(grid, x, y) {
 }
 
 // Season checkboxes + statistic radios, shared by the main layer and each condition.
-const seasonPills = (key) => `<div class="seg" data-part="seasons">${SEASONS.map(([v, l]) =>
-  `<label><input type="checkbox" value="${v}"${key.seasons.includes(v) ? " checked" : ""}><span>${l}</span></label>`).join("")}</div>`;
+const seasonPills = (prefix, key) => `<div class="seg" data-part="seasons">${SEASONS.map(([v, l]) =>
+  `<label><input type="radio" name="${prefix}-season" value="${v}"${key.seasons.includes(v) ? " checked" : ""}><span>${l}</span></label>`).join("")}</div>`;
 const statPills = (prefix, key) => `<div class="seg" data-part="stat">${STATS.map(([v, l]) =>
   `<label><input type="radio" name="${prefix}-stat" value="${v}"${key.stat === v ? " checked" : ""}><span>${l}</span></label>`).join("")}</div>`;
 function bindKeyControls(el, key, onChange) {
   el.querySelectorAll('[data-part="seasons"] input').forEach((input) => input.addEventListener("change", () => {
-    const checked = [...el.querySelectorAll('[data-part="seasons"] input:checked')].map((i) => i.value);
-    if (checked.length === 0) { input.checked = true; return; }  // keep at least one season
-    key.seasons = checked;
+    key.seasons = [input.value];  // one season at a time; the pinned table still shows annual values
     onChange();
   }));
   el.querySelectorAll('[data-part="stat"] input').forEach((input) => input.addEventListener("change", () => {
@@ -421,10 +420,7 @@ async function pin(x, y) {
     for (const [stat] of STATS) temperatures[column][stat] = valueAt(await getGrid({ seasons, stat }), x, y);
   }
   // Inside the STAMINA app the click selects the landing site there.
-  if (EMBED && window.parent !== window) {
-    window.parent.postMessage({ type: "stamina:site-selected", latitude: lat, longitude: lon, temperatures },
-                              window.location.origin);
-  }
+  postToApp({ type: "stamina:site-selected", latitude: lat, longitude: lon, temperatures });
   $("pinned").style.display = "block";
   $("pPos").textContent = fmtPos({ lat, lon }, x, y);
   const rows = [`<tr><th></th><th>Summer</th><th>Winter</th><th>Annual</th></tr>`];
@@ -447,7 +443,7 @@ function addCondition() {
 function renderConditions() {
   $("conditions").innerHTML = conditions.map((c, i) => `
     <div class="cond" data-i="${i}">
-      <div class="row">${seasonPills(c)}<button class="icon-btn c-remove" aria-label="Remove condition"${conditions.length === 1 ? " disabled" : ""}>×</button></div>
+      <div class="row">${seasonPills(`c${i}`, c)}<button class="icon-btn c-remove" aria-label="Remove condition"${conditions.length === 1 ? " disabled" : ""}>×</button></div>
       ${statPills(`c${i}`, c)}
       <div class="range-head"><span>Interval</span><output class="c-range">${c.lo}–${c.hi} K</output></div>
       <div class="dual">
@@ -489,7 +485,11 @@ function scheduleSelection() {
   requestAnimationFrame(() => { selectionQueued = false; updateSelection(); });
 }
 async function updateSelection() {
-  if (!$("selOn").checked || conditions.length === 0) { selMask = null; $("selStats").textContent = ""; draw(); return; }
+  if (!$("selOn").checked || conditions.length === 0) {
+    selMask = null; $("selStats").textContent = ""; draw();
+    postToApp({ type: "stamina:selection-stats", stats: null });
+    return;
+  }
   const layerGrids = await Promise.all(conditions.map(getGrid));
   const n = meta.size, N = n * n, hideOutside = $("selOnly").checked;
   const and = document.querySelector('input[name="selOp"]:checked').value === "and";
@@ -520,8 +520,35 @@ async function updateSelection() {
   const pxKm = 2 * meta.radiusM / meta.size / 1000;
   $("selStats").innerHTML = `<span class="swatch"></span><b>${(inside * pxKm * pxKm).toLocaleString("en", { maximumFractionDigits: 0 })} km²</b>` +
     ` selected · ${valid ? (100 * inside / valid).toFixed(1) : 0}% of the cap`;
+  postToApp({ type: "stamina:selection-stats",
+              stats: { areaKm2: inside * pxKm * pxKm, percentOfCap: valid ? (100 * inside) / valid : 0 } });
   draw();
 }
+
+// ---------- STAMINA app integration (?embed=1) ----------
+function postToApp(message) {
+  if (EMBED && window.parent !== window) window.parent.postMessage(message, window.location.origin);
+}
+// The app's Temperature filter: layer, ice threshold, and a selection that keeps pixels
+// whose layer value AND seasonal amplitude are inside the given ranges.
+async function applyAppConfig(config) {
+  current.seasons = [config.season];
+  current.stat = config.statistic;
+  $("threshold").value = config.iceStabilityThresholdK;
+  $("thresholdValue").textContent = `${config.iceStabilityThresholdK} K`;
+  $("selOn").checked = config.selectionEnabled;
+  conditions.length = 0;
+  conditions.push(
+    { seasons: [config.season], stat: config.statistic, lo: config.temperatureK.min, hi: config.temperatureK.max },
+    { seasons: [config.season], stat: "amplitude", lo: config.amplitudeK.min, hi: config.amplitudeK.max },
+  );
+  await showCurrentLayer();
+  await updateSelection();
+}
+window.addEventListener("message", (event) => {
+  if (!EMBED || event.origin !== window.location.origin) return;
+  if (event.data?.type === "stamina:temperature-config") applyAppConfig(event.data.config);
+});
 
 // ---------- interaction ----------
 function resize() {
@@ -609,12 +636,13 @@ window.addEventListener("resize", resize);
     return;
   }
   $("source").textContent = `${meta.source} · ${(2 * meta.radiusM / meta.size).toFixed(0)} m/px`;
-  $("layerKey").innerHTML = seasonPills(current) + statPills("main", current);
+  $("layerKey").innerHTML = seasonPills("main", current) + statPills("main", current);
   bindKeyControls($("layerKey"), current, showCurrentLayer);
   $("threshold").value = meta.iceThresholdK;
   $("thresholdValue").textContent = `${meta.iceThresholdK} K`;
   resize(); resetView();
   await showCurrentLayer();
+  postToApp({ type: "stamina:viewer-ready" });
 })();
 </script>
 </body>

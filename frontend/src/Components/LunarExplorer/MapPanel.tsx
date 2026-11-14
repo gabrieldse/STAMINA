@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type {
   FilterStates,
@@ -6,27 +6,36 @@ import type {
   SiteTemperatures,
 } from "../../types/explorer";
 
+import type {
+  TemperatureConfig,
+  TemperatureSelectionStats,
+} from "../../types/temperature";
+
 type Props = {
   selectedSite: LunarSite | null;
   filters: FilterStates;
   onSiteSelect: (site: LunarSite) => void;
+  temperature: TemperatureConfig;
+  onTemperatureSelection: (stats: TemperatureSelectionStats | null) => void;
 };
 
-// Message posted by the lunar map viewer (public/lunar-map) when a point is clicked.
-type SiteSelectedMessage = {
-  type: "stamina:site-selected";
-  latitude: number;
-  longitude: number;
-  temperatures: SiteTemperatures;
-};
+// Messages posted by the lunar map viewer (public/lunar-map).
+type ViewerMessage =
+  | { type: "stamina:viewer-ready" }
+  | {
+      type: "stamina:site-selected";
+      latitude: number;
+      longitude: number;
+      temperatures: SiteTemperatures;
+    }
+  | {
+      type: "stamina:selection-stats";
+      stats: TemperatureSelectionStats | null;
+    };
 
-function isSiteSelectedMessage(data: unknown): data is SiteSelectedMessage {
-  const message = data as SiteSelectedMessage | null;
-  return (
-    message?.type === "stamina:site-selected" &&
-    Number.isFinite(message.latitude) &&
-    Number.isFinite(message.longitude)
-  );
+function isViewerMessage(data: unknown): data is ViewerMessage {
+  const type = (data as { type?: unknown } | null)?.type;
+  return typeof type === "string" && type.startsWith("stamina:");
 }
 
 function formatCoordinates(latitude: number, longitude: number) {
@@ -39,26 +48,58 @@ export default function MapPanel({
   selectedSite,
   filters,
   onSiteSelect,
+  temperature,
+  onTemperatureSelection,
 }: Props) {
-  // Clicking the map selects that point as the landing site.
+  const frameRef = useRef<HTMLIFrameElement>(null);
+  const [viewerReady, setViewerReady] = useState(false);
+
+  // Messages from the map: readiness, clicked sites and selection area.
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
       if (event.origin !== window.location.origin) return;
-      if (!isSiteSelectedMessage(event.data)) return;
+      if (!isViewerMessage(event.data)) return;
 
-      const { latitude, longitude, temperatures } = event.data;
-      onSiteSelect({
-        id: `map-${latitude.toFixed(4)}-${longitude.toFixed(4)}`,
-        name: `Map point ${formatCoordinates(latitude, longitude)}`,
-        latitude,
-        longitude,
-        temperatures,
-      });
+      const message = event.data;
+
+      if (message.type === "stamina:viewer-ready") {
+        setViewerReady(true);
+      }
+
+      if (
+        message.type === "stamina:site-selected" &&
+        Number.isFinite(message.latitude) &&
+        Number.isFinite(message.longitude)
+      ) {
+        const { latitude, longitude, temperatures } = message;
+
+        onSiteSelect({
+          id: `map-${latitude.toFixed(4)}-${longitude.toFixed(4)}`,
+          name: `Map point ${formatCoordinates(latitude, longitude)}`,
+          latitude,
+          longitude,
+          temperatures,
+        });
+      }
+
+      if (message.type === "stamina:selection-stats") {
+        onTemperatureSelection(message.stats);
+      }
     }
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [onSiteSelect]);
+  }, [onSiteSelect, onTemperatureSelection]);
+
+  // The Temperature filter drives the layer and selection on the map.
+  useEffect(() => {
+    if (!viewerReady) return;
+
+    frameRef.current?.contentWindow?.postMessage(
+      { type: "stamina:temperature-config", config: temperature },
+      window.location.origin
+    );
+  }, [viewerReady, temperature]);
 
   const activeFilters = Object.entries(filters)
     .filter(([, state]) => state.enabled)
@@ -73,9 +114,10 @@ export default function MapPanel({
 
       <div className="map-workspace map-workspace-embed">
         <iframe
+          ref={frameRef}
           className="lunar-map-frame"
           src="/lunar-map/index.html?embed=1"
-          title="Lunar south pole surface temperature map"
+          title="South pole surface temperature map"
         />
       </div>
 
