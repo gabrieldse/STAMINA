@@ -20,6 +20,9 @@ import type {
 
 import { DEFAULT_TEMPERATURE_CONFIG } from "../../types/temperature";
 
+import { COMPARE_LIMIT } from "../../types/sites";
+import type { CompareSite } from "../../types/sites";
+
 
 import type {
   TemperatureConfig,
@@ -48,6 +51,12 @@ export default function LunarExplorer() {
   // Selected lunar landing site
   const [selectedSite, setSelectedSite] =
     useState<LunarSite | null>(null);
+
+  // Comparison grid over the map, and the sites it can show
+  const [comparing, setComparing] = useState(false);
+  const [compareSites, setCompareSites] = useState<CompareSite[]>([]);
+  const compareCount = compareSites.length;
+  const canCompare = compareCount > 0 && compareCount <= COMPARE_LIMIT;
 
   // Right panel (site inspector) folded to a thin strip
   const [inspectorOpen, setInspectorOpen] = useState(true);
@@ -254,6 +263,9 @@ export default function LunarExplorer() {
             onSiteClear={clearSite}
             temperature={temperature}
             onTemperatureSelection={setTemperatureSelection}
+            comparing={comparing}
+            onCompareClose={() => setComparing(false)}
+            onCompareSitesChange={setCompareSites}
           />
         </div>
 
@@ -430,6 +442,27 @@ export default function LunarExplorer() {
             </button>
 
           </div>
+
+          {/* COMPARE: the switched-on polar sites side by side over the map */}
+          <button
+            type="button"
+            className={"explorer-compare-button" + (comparing ? " active" : "")}
+            disabled={!comparing && !canCompare}
+            aria-pressed={comparing}
+            onClick={() => setComparing(!comparing)}
+          >
+            {comparing
+              ? "Close comparison ✕"
+              : `Compare ${compareCount} site${compareCount === 1 ? "" : "s"} ▦`}
+          </button>
+
+          {!comparing && !canCompare && (
+            <p className="explorer-data-note">
+              {compareCount === 0
+                ? "Switch on 1 to 6 polar sites in the map's site menu to compare them."
+                : `At most ${COMPARE_LIMIT} sites: switch off ${compareCount - COMPARE_LIMIT} in the map's site menu.`}
+            </p>
+          )}
 
         </div>
 

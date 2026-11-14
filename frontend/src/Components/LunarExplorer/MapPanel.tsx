@@ -10,8 +10,8 @@ import type {
   TemperatureSelectionStats,
 } from "../../types/temperature";
 
-import { LANDING_SITES, isOnPolarMap } from "../../types/sites";
-import type { LandingSite } from "../../types/sites";
+import { COMPARE_LIMIT, LANDING_SITES, isOnPolarMap } from "../../types/sites";
+import type { CompareSite, LandingSite } from "../../types/sites";
 
 import { downloadJson } from "../../utils/download";
 
@@ -26,12 +26,19 @@ const Globe3D = lazy(() => import("./Globe3D"));
 
 type MapView = "2d" | "3d";
 
+// Crop sizes for the comparison cells (side of the square, km)
+const CROP_SIZES_KM = [10, 20, 40, 80];
+
 type Props = {
   selectedSite: LunarSite | null;
   onSiteSelect: (site: LunarSite) => void;
   onSiteClear: () => void;
   temperature: TemperatureConfig;
   onTemperatureSelection: (stats: TemperatureSelectionStats | null) => void;
+  // Comparison grid (opened from the inspector's Compare button)
+  comparing: boolean;
+  onCompareClose: () => void;
+  onCompareSitesChange: (sites: CompareSite[]) => void;
 };
 
 // Marker sent to the map viewer.
@@ -103,6 +110,9 @@ export default function MapPanel({
   onSiteClear,
   temperature,
   onTemperatureSelection,
+  comparing,
+  onCompareClose,
+  onCompareSitesChange,
 }: Props) {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [viewerReady, setViewerReady] = useState(false);
@@ -128,6 +138,8 @@ export default function MapPanel({
   const [rotating, setRotating] = useState(false);
   const [cameraRequest, setCameraRequest] = useState<CameraRequest | null>(null);
   const nonceRef = useRef(0);
+  // The comparison grid replaces the map with 2D cells, so it shows the 2D view.
+  const activeView: MapView = comparing ? "2d" : view;
 
   function addPoint(latitude: number, longitude: number, values: Partial<LunarSite> = {}) {
     const point: LunarSite = {
@@ -246,6 +258,38 @@ export default function MapPanel({
     if (viewerReady) postToViewer({ type: "stamina:focus-site", siteId: focusId });
   }, [viewerReady, focusId]);
 
+  // Comparison: the switched-on sites inside the polar map, at most COMPARE_LIMIT shown.
+  const [cropKm, setCropKm] = useState(20);
+  const [menuOpen, setMenuOpen] = useState(true);
+  const compareSites = useMemo<CompareSite[]>(
+    () => mapSites
+      .filter((site) => site.latitude <= -80)
+      .map(({ id, name }) => ({ id, name })),
+    [mapSites]
+  );
+  const comparedIds = compareSites.slice(0, COMPARE_LIMIT).map((site) => site.id);
+
+  useEffect(() => {
+    onCompareSitesChange(compareSites);
+  }, [compareSites, onCompareSitesChange]);
+
+
+  const comparedKey = comparedIds.join(",");
+  useEffect(() => {
+    if (!viewerReady) return;
+    postToViewer({
+      type: "stamina:compare",
+      compare: comparing
+        ? {
+            siteIds: comparedKey.split(","),
+            halfSizeM: cropKm * 500,
+            // Keep the cells clear of the site menu over the right edge
+            insetRight: menuOpen ? 196 : 0,
+          }
+        : null,
+    });
+  }, [viewerReady, comparing, comparedKey, cropKm, menuOpen]);
+
   // Everything switched on, for the globe: Apollo too (it's off the polar map).
   const globeSites = useMemo<GlobeSite[]>(() => {
     const landing = LANDING_SITES.map(({ id, name, program, color, latitude, longitude, region }) => ({
@@ -283,7 +327,7 @@ export default function MapPanel({
       LANDING_MAP_SITES.some((site) => site.id === id) ||
       customSites.some((site) => site.id === id && (site.latitude ?? 0) <= -80);
 
-    if (view === "2d" && onPolarMap) {
+    if (activeView === "2d" && onPolarMap) {
       postToViewer({ type: "stamina:center-on", siteId: id });
       return;
     }
@@ -395,53 +439,76 @@ export default function MapPanel({
   return (
     <section className="explorer-map">
       <div className="map-header">
-        <strong>{view === "3d" ? "Moon" : "Lunar South Pole"}</strong>
-        <span>
-          {view === "3d"
-            ? "LROC WAC mosaic · Apollo, Artemis III and custom sites"
-            : `${temperature.enabled ? "Diviner surface temperature" : "LOLA relief"} · 80°S to the pole`}
-        </span>
+        {comparing ? (
+          <>
+            <strong>
+              Comparing {comparedIds.length} site{comparedIds.length === 1 ? "" : "s"}
+            </strong>
+            <span className="compare-controls">
+              {compareSites.length > COMPARE_LIMIT &&
+                `First ${COMPARE_LIMIT} of ${compareSites.length} · `}
+              <label>
+                Crop{" "}
+                <select value={cropKm} onChange={(e) => setCropKm(Number(e.target.value))}>
+                  {CROP_SIZES_KM.map((km) => (
+                    <option key={km} value={km}>{km} × {km} km</option>
+                  ))}
+                </select>
+              </label>
+              <button type="button" onClick={onCompareClose}>Close ✕</button>
+            </span>
+          </>
+        ) : (
+          <>
+            <strong>{activeView === "3d" ? "Moon" : "Lunar South Pole"}</strong>
+            <span>
+              {activeView === "3d"
+                ? "LROC WAC mosaic · Apollo, Artemis III and custom sites"
+                : `${temperature.enabled ? "Diviner surface temperature" : "LOLA relief"} · 80°S to the pole`}
+            </span>
+          </>
+        )}
       </div>
 
       <div className="map-workspace map-workspace-embed">
         {/* The 2D map stays loaded in 3D: it still supplies site temperatures. */}
         <iframe
           ref={frameRef}
-          className={"lunar-map-frame" + (view === "3d" ? " map-view-hidden" : "")}
+          className={"lunar-map-frame" + (activeView === "3d" ? " map-view-hidden" : "")}
           src="/lunar-map/index.html?embed=1"
           title="South pole surface temperature map"
         />
 
         {globeOpened && (
-          <div className={view === "3d" ? "" : "map-view-hidden"}>
+          <div className={activeView === "3d" ? "" : "map-view-hidden"}>
             <Suspense fallback={<div className="globe-loading">Loading the 3D Moon…</div>}>
               <Globe3D
                 sites={globeSites}
                 selectedId={selectedId}
                 onPick={pickOnGlobe}
                 onPlace={(latitude, longitude) => addPoint(latitude, longitude)}
-                addMode={addMode && view === "3d"}
+                addMode={addMode && activeView === "3d"}
                 cameraRequest={cameraRequest}
-                rotating={rotating && view === "3d"}
+                rotating={rotating && activeView === "3d"}
               />
             </Suspense>
           </div>
         )}
 
-        <div className="map-switcher" role="group" aria-label="Map view">
+        {!comparing && <div className="map-switcher" role="group" aria-label="Map view">
           {(["2d", "3d"] as MapView[]).map((option) => (
             <button
               key={option}
               type="button"
-              className={view === option ? "active" : ""}
-              aria-pressed={view === option}
+              className={activeView === option ? "active" : ""}
+              aria-pressed={activeView === option}
               onClick={() => switchView(option)}
             >
               <img src={`/globe/thumb_${option}.png`} alt="" />
               {option === "2d" ? "2D pole" : "3D globe"}
             </button>
           ))}
-        </div>
+        </div>}
 
         <SiteList
           groups={groups}
@@ -455,13 +522,14 @@ export default function MapPanel({
           addMode={addMode}
           onToggleAddMode={() => setAddMode(!addMode)}
           onGoTo={goTo}
-          view={view}
+          view={activeView}
           rotating={rotating}
           onToggleRotate={() => setRotating(!rotating)}
           onPreset={(preset: CameraPreset) => requestCamera({ kind: "preset", preset })}
+          onOpenChange={setMenuOpen}
         />
 
-        {infoSite && closedInfoId !== infoSite.id && (
+        {infoSite && closedInfoId !== infoSite.id && !comparing && (
           <SiteInfoCard
             site={infoSite}
             onClose={() => setClosedInfoId(infoSite.id)}

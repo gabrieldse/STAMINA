@@ -34,6 +34,8 @@ type Props = {
   rotating: boolean;
   onToggleRotate: () => void;
   onPreset: (preset: CameraPreset) => void;
+  // Lets the comparison grid keep clear of the open menu
+  onOpenChange?: (open: boolean) => void;
 };
 
 const PRESET_BUTTONS: { preset: CameraPreset; label: string; title: string }[] = [
@@ -61,6 +63,7 @@ export default function SiteList({
   rotating,
   onToggleRotate,
   onPreset,
+  onOpenChange,
 }: Props) {
   const [isOpen, setIsOpen] = useState(true);
   const [openGroups, setOpenGroups] = useState(
@@ -86,7 +89,10 @@ export default function SiteList({
       <button
         type="button"
         className="site-menu-toggle"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          setIsOpen(!isOpen);
+          onOpenChange?.(!isOpen);
+        }}
         aria-expanded={isOpen}
       >
         <span>Landing sites</span>

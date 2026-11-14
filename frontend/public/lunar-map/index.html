@@ -89,6 +89,10 @@
   body.embed { --bg: #000; }
   /* Leave the bottom-left corner to the app's 2D/3D map switcher */
   body.embed #readout { left: 160px; }
+  /* Comparing: no map switcher in the corner; the readout sits in the bottom strip */
+  body.embed.comparing #readout { left: 12px; bottom: 8px; max-width: calc(100% - 300px); padding: 6px 10px; }
+  body.embed.comparing #readout .t { font-size: 14px; }
+  body.embed.comparing #rPos { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
 
   #readout { bottom: 12px; left: 12px; min-width: 300px; font-variant-numeric: tabular-nums; }
   #readout .t { font-size: 20px; font-weight: 600; }
@@ -197,6 +201,14 @@ const conditions = [];
 let selMask = null;
 const image = document.createElement("canvas"), maskImage = document.createElement("canvas");
 const view = { x: 0, y: 0, k: 1 };  // centre in metres, pixels per metre
+// Screen rectangle the view is drawn into: the whole canvas, or one cell of the comparison grid.
+const frame = { x: 0, y: 0, w: 0, h: 0 };
+function useFullFrame() {
+  frame.x = 0; frame.y = 0; frame.w = canvas.width; frame.h = canvas.height;
+}
+// Comparison grid sent by the app: { siteIds, halfSizeM, insetRight }, or null.
+let compare = null;
+let compareCells = [];  // last drawn cells: { x, y, w, h, site, k }, for hover and clicks
 // Named landing sites sent by the STAMINA app: { id, name, color, x, y } in metres.
 let appSites = [];
 // In the app, clicking empty map only adds a point after "+ Add point"; on its own the viewer always pins.
@@ -223,8 +235,8 @@ function toXY(lat, lon) {
   return { x: r * Math.sin(a), y: r * Math.cos(a) };
 }
 const dpr = () => window.devicePixelRatio || 1;
-const toScreen = (x, y) => ({ sx: canvas.width / 2 + (x - view.x) * view.k, sy: canvas.height / 2 - (y - view.y) * view.k });
-const toWorld = (sx, sy) => ({ x: view.x + (sx - canvas.width / 2) / view.k, y: view.y - (sy - canvas.height / 2) / view.k });
+const toScreen = (x, y) => ({ sx: frame.x + frame.w / 2 + (x - view.x) * view.k, sy: frame.y + frame.h / 2 - (y - view.y) * view.k });
+const toWorld = (sx, sy) => ({ x: view.x + (sx - frame.x - frame.w / 2) / view.k, y: view.y - (sy - frame.y - frame.h / 2) / view.k });
 function pixelIndex(x, y) {
   const px = 2 * meta.radiusM / meta.size;
   const col = Math.floor((x + meta.radiusM) / px), row = Math.floor((meta.radiusM - y) / px);
@@ -318,7 +330,7 @@ function buildBaseImage() {
 function buildImage() {
   // The colorbar only applies to the temperature layer.
   for (const id of ["colorbar", "tmin", "tmid", "tmax"]) $(id).style.visibility = showTemperature() ? "" : "hidden";
-  if (!showTemperature() && base) { legend = null; updateReadout(lastPointer); return buildBaseImage(); }
+  if (!showTemperature() && base) { legend = null; readoutAt(lastPointer); return buildBaseImage(); }
   const n = meta.size, grid = grids[keyId(current)], lut = meta.colormap;
   const [lo, hi] = colorRange(), span = hi - lo || 1;
   const thr = +$("threshold").value * meta.scale;
@@ -339,7 +351,7 @@ function buildImage() {
   ictx.putImageData(img, 0, 0);
   drawColorbar(lo, hi);
   legend = { lo, hi, title: `${keyName(current)}${current.stat === "amplitude" ? " (swing)" : ""} · K` };
-  updateReadout(lastPointer);
+  readoutAt(lastPointer);
   draw();
 }
 function isEdge(grid, i, n, thr) {
@@ -362,19 +374,32 @@ function drawColorbar(lo, hi) {
 }
 
 function draw() {
-  const W = canvas.width, H = canvas.height, R = meta.radiusM, s = dpr();
+  const W = canvas.width, H = canvas.height;
   ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--bg");
   ctx.fillRect(0, 0, W, H);
+  if (compare) return drawCompare();
+  useFullFrame();
+  drawMap(false);
+  drawScaleBar(true);
+}
+// The map inside the current frame: clipped to the polar disc, or to the
+// frame rectangle for a comparison cell (no graticule labels there).
+function drawMap(inCell) {
+  const R = meta.radiusM, s = dpr();
   const c = toScreen(0, 0), rpx = R * view.k;
 
   ctx.save();
-  ctx.beginPath(); ctx.arc(c.sx, c.sy, rpx, 0, 2 * Math.PI); ctx.clip();
+  ctx.beginPath();
+  if (inCell) ctx.rect(frame.x, frame.y, frame.w, frame.h);
+  else ctx.arc(c.sx, c.sy, rpx, 0, 2 * Math.PI);
+  ctx.clip();
   ctx.fillStyle = "#000"; ctx.fill();
   ctx.imageSmoothingEnabled = (2 * rpx) / meta.size < 2;  // crisp pixels when zoomed in
+  if (inCell) { ctx.beginPath(); ctx.arc(c.sx, c.sy, rpx, 0, 2 * Math.PI); ctx.clip(); }
   ctx.drawImage(image, c.sx - rpx, c.sy - rpx, 2 * rpx, 2 * rpx);
   if (selMask) ctx.drawImage(maskImage, c.sx - rpx, c.sy - rpx, 2 * rpx, 2 * rpx);
 
-  if ($("grid").checked) {
+  if ($("grid").checked && !inCell) {
     ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.lineWidth = s;
     ctx.fillStyle = "rgba(255,255,255,0.8)"; ctx.font = `${11 * s}px system-ui`; ctx.textAlign = "center";
     for (const lat of [-82, -84, -86, -88, -89]) {
@@ -389,6 +414,15 @@ function draw() {
   }
   ctx.restore();
 
+  if (inCell) {
+    // Markers and labels stay inside the cell
+    ctx.save();
+    ctx.beginPath(); ctx.rect(frame.x, frame.y, frame.w, frame.h); ctx.clip();
+    drawSites();
+    drawPin();
+    ctx.restore();
+    return;
+  }
   ctx.strokeStyle = "#5a6270"; ctx.lineWidth = s;
   ctx.beginPath(); ctx.arc(c.sx, c.sy, rpx, 0, 2 * Math.PI); ctx.stroke();
   if ($("grid").checked) {
@@ -415,12 +449,77 @@ function draw() {
     }
   }
   drawSites();
-  if (pinned) {
-    const p = toScreen(pinned.x, pinned.y);
-    ctx.strokeStyle = "#00e5ff"; ctx.lineWidth = 2 * s;
-    ctx.beginPath(); ctx.arc(p.sx, p.sy, (pinned.siteId ? 10 : 7) * s, 0, 2 * Math.PI); ctx.stroke();
+  drawPin();
+}
+function drawPin() {
+  if (!pinned) return;
+  const s = dpr(), p = toScreen(pinned.x, pinned.y);
+  ctx.strokeStyle = "#00e5ff"; ctx.lineWidth = 2 * s;
+  ctx.beginPath(); ctx.arc(p.sx, p.sy, (pinned.siteId ? 10 : 7) * s, 0, 2 * Math.PI); ctx.stroke();
+}
+
+// ---------- comparison grid: up to 6 sites, 2 rows x 3 columns ----------
+const COMPARE_COLS = 3, COMPARE_ROWS = 2;
+function drawCompare() {
+  const s = dpr(), W = canvas.width, H = canvas.height, gap = 6 * s, titleH = 22 * s;
+  // Leave the app's site menu (right) and the readout/legend strip (bottom) free.
+  const right = (compare.insetRight || 0) * s, bottom = 64 * s;
+  const cw = (W - right - gap * (COMPARE_COLS + 1)) / COMPARE_COLS;
+  const ch = (H - bottom - gap * (COMPARE_ROWS + 1)) / COMPARE_ROWS;
+  const saved = { ...view };
+  compareCells = [];
+
+  for (let i = 0; i < COMPARE_COLS * COMPARE_ROWS; i++) {
+    const x = gap + (i % COMPARE_COLS) * (cw + gap), y = gap + Math.floor(i / COMPARE_COLS) * (ch + gap);
+    const site = appSites.find((item) => item.id === compare.siteIds[i]);
+    ctx.fillStyle = "#111"; ctx.fillRect(x, y, cw, ch);
+    if (!site) {
+      ctx.strokeStyle = "#333"; ctx.lineWidth = s; ctx.strokeRect(x + 0.5, y + 0.5, cw - 1, ch - 1);
+      continue;
+    }
+    // Map below the title bar, centred on the site, the crop filling the shorter side
+    frame.x = x; frame.y = y + titleH; frame.w = cw; frame.h = ch - titleH;
+    view.x = site.x; view.y = site.y;
+    view.k = Math.min(frame.w, frame.h) / (2 * compare.halfSizeM);
+    compareCells.push({ ...frame, site, k: view.k });
+    drawMap(true);
+    drawCellScale(s);
+
+    ctx.fillStyle = "rgba(20, 20, 22, 0.92)"; ctx.fillRect(x, y, cw, titleH);
+    ctx.beginPath(); ctx.arc(x + 12 * s, y + titleH / 2, 4.5 * s, 0, 2 * Math.PI);
+    ctx.fillStyle = site.color; ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.font = `600 ${12 * s}px system-ui`; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText(site.name, x + 22 * s, y + titleH / 2);
+    ctx.textAlign = "right"; ctx.fillStyle = "#aaa"; ctx.font = `${10 * s}px system-ui`;
+    ctx.fillText(`${(2 * compare.halfSizeM / 1000).toFixed(0)} km`, x + cw - 8 * s, y + titleH / 2);
+    ctx.textBaseline = "alphabetic";
+    if (site.id === pinned?.siteId) {
+      ctx.strokeStyle = "#00e5ff"; ctx.lineWidth = 2 * s; ctx.strokeRect(x + s, y + s, cw - 2 * s, ch - 2 * s);
+    }
   }
-  drawScaleBar();
+  Object.assign(view, saved);
+  useFullFrame();
+  drawScaleBar(false);
+}
+// Small scale bar in the bottom-left corner of a comparison cell
+function drawCellScale(s) {
+  const target = 60 * s / view.k, mag = 10 ** Math.floor(Math.log10(target));
+  const len = [5, 2, 1].map((m) => m * mag).find((m) => m <= target);
+  const x = frame.x + 8 * s, y = frame.y + frame.h - 8 * s;
+  ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; ctx.fillRect(x - 4 * s, y - 16 * s, len * view.k + 8 * s, 20 * s);
+  ctx.fillStyle = "#e6e8eb"; ctx.fillRect(x, y - 2 * s, len * view.k, 2 * s);
+  ctx.font = `${10 * s}px system-ui`; ctx.textAlign = "left";
+  ctx.fillText(len >= 1000 ? `${len / 1000} km` : `${len} m`, x, y - 5 * s);
+}
+// Runs fn with the view of the comparison cell under (sx, sy), if any.
+function inCompareCell(sx, sy, fn) {
+  const cell = compareCells.find((c) => sx >= c.x && sx <= c.x + c.w && sy >= c.y && sy <= c.y + c.h);
+  if (!cell) return false;
+  const saved = { ...view };
+  Object.assign(frame, { x: cell.x, y: cell.y, w: cell.w, h: cell.h });
+  view.x = cell.site.x; view.y = cell.site.y; view.k = cell.k;
+  try { fn(cell); } finally { Object.assign(view, saved); useFullFrame(); }
+  return true;
 }
 function drawCraterRims(s) {
   for (const f of meta.features) {
@@ -500,11 +599,13 @@ function siteNear(sx, sy) {
   });
 }
 // Bottom-right corner: scale bar, and the colour legend of the temperature layer next to it.
-function drawScaleBar() {
+function drawScaleBar(showScale) {
   const s = dpr(), W = canvas.width, H = canvas.height, target = 120 * s / view.k;  // metres in ~120 css px
+  if (!showScale && !legend) return;
   const mag = 10 ** Math.floor(Math.log10(target));
   const len = [5, 2, 1].map((m) => m * mag).find((m) => m <= target);
-  const barW = len * view.k, x = W - 24 * s - barW, y = H - 24 * s;
+  // Without the scale bar (comparison: each cell has its own), the legend takes the corner.
+  const barW = showScale ? len * view.k : 0, x = W - 24 * s - barW, y = H - 24 * s;
   const legendW = 170 * s, lx = x - 24 * s - legendW;
 
   ctx.fillStyle = "rgba(20, 20, 22, 0.72)";
@@ -512,9 +613,11 @@ function drawScaleBar() {
   ctx.roundRect(legend ? lx - 10 * s : x - 10 * s, H - 52 * s, W - (legend ? lx : x) + 10 * s - 12 * s, 46 * s, 8 * s);
   ctx.fill();
 
-  ctx.fillStyle = "#e6e8eb"; ctx.fillRect(x, y, barW, 3 * s);
-  ctx.font = `${11 * s}px system-ui`; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
-  ctx.fillText(len >= 1000 ? `${len / 1000} km` : `${len} m`, x + barW / 2, y - 6 * s);
+  if (showScale) {
+    ctx.fillStyle = "#e6e8eb"; ctx.fillRect(x, y, barW, 3 * s);
+    ctx.font = `${11 * s}px system-ui`; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+    ctx.fillText(len >= 1000 ? `${len / 1000} km` : `${len} m`, x + barW / 2, y - 6 * s);
+  }
   if (legend) drawLegend(lx, H - 32 * s, legendW, s);
 }
 function drawLegend(x, y, w, s) {
@@ -540,6 +643,15 @@ const fmtPos = ({ lat, lon }, x, y) =>
   `${Math.abs(lat).toFixed(3)}°S, ${Math.abs(lon).toFixed(2)}°${lon >= 0 ? "E" : "W"}  ·  x ${(x / 1000).toFixed(1)} km, y ${(y / 1000).toFixed(1)} km`;
 
 let lastPointer = null;  // last mouse event over the map, to refresh the readout on layer changes
+// Readout for a mouse event, through the comparison cell under it when comparing.
+function readoutAt(ev) {
+  if (!ev) return;
+  if (!compare) return updateReadout(ev);
+  lastPointer = ev;
+  if (!inCompareCell(ev.offsetX * dpr(), ev.offsetY * dpr(), () => updateReadout(ev))) {
+    $("rT").textContent = "–"; $("rPos").textContent = "Move over a site to read its values";
+  }
+}
 function updateReadout(ev) {
   if (!ev) return;
   lastPointer = ev;
@@ -710,6 +822,12 @@ window.addEventListener("message", (event) => {
     draw();
   }
   if (data?.type === "stamina:add-mode") setAddMode(data.enabled);
+  // Comparison grid on/off: { siteIds, halfSizeM, insetRight } or null
+  if (data?.type === "stamina:compare") {
+    compare = data.compare;
+    document.body.classList.toggle("comparing", Boolean(compare));
+    draw();
+  }
   // Eye button in the app: centre on the site and zoom in to show ~80 km around it.
   if (data?.type === "stamina:center-on") {
     const site = appSites.find((item) => item.id === data.siteId);
@@ -744,21 +862,25 @@ function resetView() {
 
 let drag = null;
 canvas.addEventListener("pointerdown", (e) => {
+  if (compare) { drag = { moved: false }; return; }  // cells don't pan; clicks select
   drag = { sx: e.offsetX, sy: e.offsetY, vx: view.x, vy: view.y, moved: false };
   canvas.setPointerCapture(e.pointerId); canvas.classList.add("dragging");
 });
 canvas.addEventListener("pointermove", (e) => {
-  if (drag) {
+  if (drag && !compare) {
     const dx = e.offsetX - drag.sx, dy = e.offsetY - drag.sy;
     if (Math.hypot(dx, dy) > 3) drag.moved = true;
     view.x = drag.vx - dx * dpr() / view.k; view.y = drag.vy + dy * dpr() / view.k;
     draw();
   }
-  updateReadout(e);
+  readoutAt(e);
 });
 canvas.addEventListener("pointerup", (e) => {
   canvas.classList.remove("dragging");
-  if (drag && !drag.moved) {
+  if (drag && !drag.moved && compare) {
+    // A click in a comparison cell selects its site.
+    inCompareCell(e.offsetX * dpr(), e.offsetY * dpr(), (cell) => pin(cell.site.x, cell.site.y, cell.site.id));
+  } else if (drag && !drag.moved) {
     const w = toWorld(e.offsetX * dpr(), e.offsetY * dpr());
     // A click on a landing site marker selects that site.
     const site = siteNear(e.offsetX * dpr(), e.offsetY * dpr());
@@ -772,6 +894,7 @@ canvas.addEventListener("pointerup", (e) => {
 });
 canvas.addEventListener("wheel", (e) => {
   e.preventDefault();
+  if (compare) return;  // the crop size comes from the app
   const before = toWorld(e.offsetX * dpr(), e.offsetY * dpr());
   const maxK = 40 * meta.size / (2 * meta.radiusM);  // up to 40 screen px per data pixel
   view.k = Math.min(maxK, Math.max(0.2 * canvas.height / meta.radiusM / 2, view.k * Math.exp(-e.deltaY * 0.0015)));
@@ -779,7 +902,7 @@ canvas.addEventListener("wheel", (e) => {
   view.x += before.x - after.x; view.y += before.y - after.y;
   draw(); updateReadout(e);
 }, { passive: false });
-canvas.addEventListener("dblclick", resetView);
+canvas.addEventListener("dblclick", () => { if (!compare) resetView(); });
 $("collapse").onclick = () => {
   const collapsed = $("controls").classList.toggle("collapsed");
   $("collapse").textContent = collapsed ? "▾" : "▴";

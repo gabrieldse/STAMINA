@@ -845,3 +845,56 @@
 .inspector-collapsed .inspector-toggle span:first-child {
   writing-mode: vertical-rl;
 }
+
+/* COMPARE button (below Run Scientific Analysis) */
+
+.explorer-compare-button {
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid #ff9f43;
+  border-radius: 8px;
+  background: rgba(255, 159, 67, 0.16);
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.explorer-compare-button:hover:not(:disabled) {
+  background: rgba(255, 159, 67, 0.3);
+}
+
+.explorer-compare-button.active {
+  background: #ff9f43;
+  color: #1e1e1e;
+}
+
+.explorer-compare-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Comparison header controls in the map bar */
+.compare-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.compare-controls select,
+.compare-controls button {
+  padding: 3px 8px;
+  border: 1px solid #555;
+  border-radius: 6px;
+  background: #232326;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.compare-controls button:hover {
+  border-color: #ff9f43;
+}

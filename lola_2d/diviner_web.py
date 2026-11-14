@@ -8,8 +8,8 @@ Exports every Moon Trek Diviner season summary (see diviner_maps.py) as a small
 binary grid for the viewer in frontend/public/lunar-map/, which the React app
 embeds in its Lunar South Pole map. The viewer also runs on its own:
 
-    uv run diviner_web.py                 # build (1024 px grids) and serve on :8000
-    uv run diviner_web.py --size 2048     # finer grids (4x the data)
+    uv run diviner_web.py                 # build (2048 px grids, ~300 m/px) and serve on :8000
+    uv run diviner_web.py --size 1024     # lighter grids (1/4 of the data)
     uv run diviner_web.py --no-serve      # only build the data, e.g. before `npm run dev`
 
 Each temperature grid is uint16 little-endian, kelvin x 100, 0 = no data.
@@ -106,7 +106,8 @@ def serve(port: int) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--size", type=int, default=1024, help="grid size in pixels across the 80°S disc")
+    # 2048 px is ~300 m/px, close to the 240 m data, so the comparison crops stay sharp.
+    parser.add_argument("--size", type=int, default=2048, help="grid size in pixels across the 80°S disc")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--no-serve", action="store_true", help="only build the data")
     args = parser.parse_args()
