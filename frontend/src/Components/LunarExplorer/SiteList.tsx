@@ -1,6 +1,8 @@
 
 import { useState } from "react";
 
+import type { CameraPreset } from "./Globe3D";
+
 import "./SiteList.css";
 
 export type SiteGroup = {
@@ -25,11 +27,24 @@ type Props = {
   // "+ Add point": the next click on the map places a custom point.
   addMode: boolean;
   onToggleAddMode: () => void;
+  // Eye button: move the view to the site.
+  onGoTo: (id: string) => void;
+  // 3D globe controls
+  view: "2d" | "3d";
+  rotating: boolean;
+  onToggleRotate: () => void;
+  onPreset: (preset: CameraPreset) => void;
 };
 
+const PRESET_BUTTONS: { preset: CameraPreset; label: string; title: string }[] = [
+  { preset: "nearSide", label: "Near side", title: "The near side, with the Apollo sites" },
+  { preset: "southPole", label: "South pole", title: "Look down on the south pole and the Artemis III regions" },
+  { preset: "both", label: "Both", title: "Near side tilted south: Apollo and the south pole together" },
+];
+
 // Collapsible site menu over the right side of the map, like the Website
-// draft's mission menu: clicking a site switches it on or off, and each
-// group has a switch for all of its sites.
+// draft's mission menu: clicking a site switches it on or off, the eye moves
+// the view to it, and each group has a switch for all of its sites.
 export default function SiteList({
   groups,
   hiddenIds,
@@ -41,6 +56,11 @@ export default function SiteList({
   onExportGroup,
   addMode,
   onToggleAddMode,
+  onGoTo,
+  view,
+  rotating,
+  onToggleRotate,
+  onPreset,
 }: Props) {
   const [isOpen, setIsOpen] = useState(true);
   const [openGroups, setOpenGroups] = useState(
@@ -88,6 +108,27 @@ export default function SiteList({
             <small className="site-add-hint">
               Click the map to place the point (Esc cancels)
             </small>
+          )}
+
+          {view === "3d" && (
+            <div className="site-globe-controls">
+              <button
+                type="button"
+                className={"site-rotate" + (rotating ? " active" : "")}
+                onClick={onToggleRotate}
+                aria-pressed={rotating}
+              >
+                {rotating ? "■ Stop rotation" : "⟳ Rotate globe"}
+              </button>
+
+              <div className="site-presets" role="group" aria-label="Camera views">
+                {PRESET_BUTTONS.map(({ preset, label, title }) => (
+                  <button key={preset} type="button" title={title} onClick={() => onPreset(preset)}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
         </>
       )}
@@ -141,31 +182,19 @@ export default function SiteList({
 
                 {group.items.map((item) => {
                   const off = hiddenIds.has(item.id);
-                  const className =
-                    "site-list-item" +
-                    (off ? " off" : "") +
-                    (item.id === selectedId ? " active" : "");
                   const dot = <i style={{ background: item.color, color: item.color }} />;
 
-                  if (!group.editable) {
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className={className}
-                        aria-pressed={!off}
-                        title={off ? "Turn on" : "Turn off"}
-                        onClick={() => onToggleSite(item.id)}
-                      >
-                        {dot}
-                        <span>{item.name}</span>
-                      </button>
-                    );
-                  }
-
-                  // Editable: toggle, rename (✎) and delete (× or the Delete key)
+                  // Row: toggle (name), go to (eye), and for custom points
+                  // rename (✎) and delete (× or the Delete key).
                   return (
-                    <div key={item.id} className={className + " editable"}>
+                    <div
+                      key={item.id}
+                      className={
+                        "site-list-item" +
+                        (off ? " off" : "") +
+                        (item.id === selectedId ? " active" : "")
+                      }
+                    >
                       {editing?.id === item.id ? (
                         <>
                           {dot}
@@ -191,7 +220,7 @@ export default function SiteList({
                             title={off ? "Turn on" : "Turn off"}
                             onClick={() => onToggleSite(item.id)}
                             onKeyDown={(e) => {
-                              if (e.key === "Delete") onDeleteSite(item.id);
+                              if (group.editable && e.key === "Delete") onDeleteSite(item.id);
                             }}
                           >
                             {dot}
@@ -200,23 +229,37 @@ export default function SiteList({
 
                           <button
                             type="button"
-                            className="site-list-action"
-                            onClick={() => setEditing({ id: item.id, name: item.name })}
-                            title="Rename"
-                            aria-label={`Rename ${item.name}`}
+                            className="site-list-action site-list-eye"
+                            onClick={() => onGoTo(item.id)}
+                            title="Go to"
+                            aria-label={`Go to ${item.name}`}
                           >
-                            ✎
+                            👁
                           </button>
 
-                          <button
-                            type="button"
-                            className="site-list-action"
-                            onClick={() => onDeleteSite(item.id)}
-                            title="Delete"
-                            aria-label={`Delete ${item.name}`}
-                          >
-                            ×
-                          </button>
+                          {group.editable && (
+                            <>
+                              <button
+                                type="button"
+                                className="site-list-action"
+                                onClick={() => setEditing({ id: item.id, name: item.name })}
+                                title="Rename"
+                                aria-label={`Rename ${item.name}`}
+                              >
+                                ✎
+                              </button>
+
+                              <button
+                                type="button"
+                                className="site-list-action"
+                                onClick={() => onDeleteSite(item.id)}
+                                title="Delete"
+                                aria-label={`Delete ${item.name}`}
+                              >
+                                ×
+                              </button>
+                            </>
+                          )}
                         </>
                       )}
                     </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   LunarSite,
@@ -18,6 +18,13 @@ import { downloadJson } from "../../utils/download";
 import SiteInfoCard from "./SiteInfoCard";
 import SiteList from "./SiteList";
 import type { SiteGroup } from "./SiteList";
+import type { CameraPreset, CameraRequest, CameraTarget, GlobeSite } from "./Globe3D";
+import "./Globe3D.css";
+
+// CesiumJS is large, so the 3D globe only loads when it is first opened.
+const Globe3D = lazy(() => import("./Globe3D"));
+
+type MapView = "2d" | "3d";
 
 type Props = {
   selectedSite: LunarSite | null;
@@ -115,6 +122,32 @@ export default function MapPanel({
   // "+ Add point": the next click on empty map places a custom point.
   const [addMode, setAddMode] = useState(false);
 
+  // 2D polar map or 3D globe; the globe stays mounted once opened.
+  const [view, setView] = useState<MapView>("2d");
+  const [globeOpened, setGlobeOpened] = useState(false);
+  const [rotating, setRotating] = useState(false);
+  const [cameraRequest, setCameraRequest] = useState<CameraRequest | null>(null);
+  const nonceRef = useRef(0);
+
+  function addPoint(latitude: number, longitude: number, values: Partial<LunarSite> = {}) {
+    const point: LunarSite = {
+      id: `custom-${Date.now()}`,
+      name: `Point ${nextPointRef.current++}`,
+      latitude,
+      longitude,
+      ...values,
+    };
+    customRef.current = [...customRef.current, point];
+    setCustomSites(customRef.current);
+    setAddMode(false);
+    onSiteSelect(point);
+  }
+  // The message listener below is registered once; it reaches addPoint through a ref.
+  const addPointRef = useRef(addPoint);
+  useEffect(() => {
+    addPointRef.current = addPoint;
+  });
+
   // Messages from the map: readiness, clicked sites and selection area.
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
@@ -142,18 +175,8 @@ export default function MapPanel({
         } else if (custom) {
           onSiteSelect({ ...custom, ...values });
         } else {
-          // A click on empty map: keep it as a new custom point.
-          const point: LunarSite = {
-            id: `custom-${Date.now()}`,
-            name: `Point ${nextPointRef.current++}`,
-            latitude,
-            longitude,
-            ...values,
-          };
-          customRef.current = [...customRef.current, point];
-          setCustomSites(customRef.current);
-          setAddMode(false);
-          onSiteSelect(point);
+          // A click on empty map ("+ Add point"): keep it as a new custom point.
+          addPointRef.current(latitude, longitude, values);
         }
       }
 
@@ -222,6 +245,59 @@ export default function MapPanel({
   useEffect(() => {
     if (viewerReady) postToViewer({ type: "stamina:focus-site", siteId: focusId });
   }, [viewerReady, focusId]);
+
+  // Everything switched on, for the globe: Apollo too (it's off the polar map).
+  const globeSites = useMemo<GlobeSite[]>(() => {
+    const landing = LANDING_SITES.map(({ id, name, program, color, latitude, longitude, region }) => ({
+      id,
+      label: program === "Artemis" ? `A3 ${name}` : name,
+      color,
+      latitude,
+      longitude,
+      region,
+    }));
+    const custom = customSites.map((site) => ({
+      id: site.id,
+      label: site.name,
+      color: CUSTOM_COLOR,
+      latitude: site.latitude ?? 0,
+      longitude: site.longitude ?? 0,
+    }));
+    return [...landing, ...custom].filter((site) => !hiddenIds.has(site.id));
+  }, [customSites, hiddenIds]);
+
+  function switchView(next: MapView) {
+    setView(next);
+    if (next === "3d") setGlobeOpened(true);
+    else setRotating(false);
+  }
+
+  function requestCamera(target: CameraTarget) {
+    nonceRef.current += 1;
+    setCameraRequest({ ...target, nonce: nonceRef.current });
+  }
+
+  // Eye button: centre the 2D map on a polar site, otherwise fly the globe to it.
+  function goTo(id: string) {
+    const onPolarMap =
+      LANDING_MAP_SITES.some((site) => site.id === id) ||
+      customSites.some((site) => site.id === id && (site.latitude ?? 0) <= -80);
+
+    if (view === "2d" && onPolarMap) {
+      postToViewer({ type: "stamina:center-on", siteId: id });
+      return;
+    }
+    switchView("3d");
+    requestCamera({ kind: "site", siteId: id });
+  }
+
+  // A click on a globe marker selects its site, like the list.
+  function pickOnGlobe(id: string) {
+    const named = LANDING_SITES.find((site) => site.id === id);
+    const custom = customSites.find((site) => site.id === id);
+    if (named) onSiteSelect(toLunarSite(named));
+    else if (custom) onSiteSelect(custom);
+  }
 
   // Clicking a site switches it on (and selects it) or off.
   function toggleSite(id: string) {
@@ -319,22 +395,53 @@ export default function MapPanel({
   return (
     <section className="explorer-map">
       <div className="map-header">
-        <strong>Lunar South Pole</strong>
+        <strong>{view === "3d" ? "Moon" : "Lunar South Pole"}</strong>
         <span>
-          {temperature.enabled
-            ? "Diviner surface temperature"
-            : "LOLA relief"}
-          {" · 80°S to the pole"}
+          {view === "3d"
+            ? "LROC WAC mosaic · Apollo, Artemis III and custom sites"
+            : `${temperature.enabled ? "Diviner surface temperature" : "LOLA relief"} · 80°S to the pole`}
         </span>
       </div>
 
       <div className="map-workspace map-workspace-embed">
+        {/* The 2D map stays loaded in 3D: it still supplies site temperatures. */}
         <iframe
           ref={frameRef}
-          className="lunar-map-frame"
+          className={"lunar-map-frame" + (view === "3d" ? " map-view-hidden" : "")}
           src="/lunar-map/index.html?embed=1"
           title="South pole surface temperature map"
         />
+
+        {globeOpened && (
+          <div className={view === "3d" ? "" : "map-view-hidden"}>
+            <Suspense fallback={<div className="globe-loading">Loading the 3D Moon…</div>}>
+              <Globe3D
+                sites={globeSites}
+                selectedId={selectedId}
+                onPick={pickOnGlobe}
+                onPlace={(latitude, longitude) => addPoint(latitude, longitude)}
+                addMode={addMode && view === "3d"}
+                cameraRequest={cameraRequest}
+                rotating={rotating && view === "3d"}
+              />
+            </Suspense>
+          </div>
+        )}
+
+        <div className="map-switcher" role="group" aria-label="Map view">
+          {(["2d", "3d"] as MapView[]).map((option) => (
+            <button
+              key={option}
+              type="button"
+              className={view === option ? "active" : ""}
+              aria-pressed={view === option}
+              onClick={() => switchView(option)}
+            >
+              <img src={`/globe/thumb_${option}.png`} alt="" />
+              {option === "2d" ? "2D pole" : "3D globe"}
+            </button>
+          ))}
+        </div>
 
         <SiteList
           groups={groups}
@@ -347,6 +454,11 @@ export default function MapPanel({
           onExportGroup={exportGroup}
           addMode={addMode}
           onToggleAddMode={() => setAddMode(!addMode)}
+          onGoTo={goTo}
+          view={view}
+          rotating={rotating}
+          onToggleRotate={() => setRotating(!rotating)}
+          onPreset={(preset: CameraPreset) => requestCamera({ kind: "preset", preset })}
         />
 
         {infoSite && closedInfoId !== infoSite.id && (

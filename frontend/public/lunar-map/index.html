@@ -87,6 +87,8 @@
   body.embed #readout .t { font-size: 15px; }
   body.embed #pinned { display: none !important; }
   body.embed { --bg: #000; }
+  /* Leave the bottom-left corner to the app's 2D/3D map switcher */
+  body.embed #readout { left: 160px; }
 
   #readout { bottom: 12px; left: 12px; min-width: 300px; font-variant-numeric: tabular-nums; }
   #readout .t { font-size: 20px; font-weight: 600; }
@@ -708,6 +710,15 @@ window.addEventListener("message", (event) => {
     draw();
   }
   if (data?.type === "stamina:add-mode") setAddMode(data.enabled);
+  // Eye button in the app: centre on the site and zoom in to show ~80 km around it.
+  if (data?.type === "stamina:center-on") {
+    const site = appSites.find((item) => item.id === data.siteId);
+    if (site) {
+      view.x = site.x; view.y = site.y;
+      view.k = Math.max(view.k, 0.45 * Math.min(canvas.width, canvas.height) / 40000);
+      draw();
+    }
+  }
   if (data?.type === "stamina:focus-site") {
     const site = appSites.find((item) => item.id === data.siteId);
     if (site) pin(site.x, site.y, site.id);

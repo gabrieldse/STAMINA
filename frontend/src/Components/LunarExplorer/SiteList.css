@@ -175,11 +175,16 @@
   white-space: nowrap;
 }
 
-/* Editable (custom) sites: toggle + rename + delete in one row */
-.site-list-item.editable {
+/* Each row: toggle (name) + go to (eye), and rename/delete for custom points */
+div.site-list-item {
   gap: 4px;
   padding-right: 4px;
   cursor: default;
+}
+
+.site-list-eye {
+  font-size: 11px;
+  filter: grayscale(1);
 }
 
 .site-list-name {
@@ -270,4 +275,50 @@
   color: #ffc58f;
   font-size: 10px;
   line-height: 1.4;
+}
+
+/* 3D globe: rotation and camera views, under "+ Add point" */
+.site-globe-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.site-rotate {
+  padding: 5px 8px;
+  border: 1px solid #6b8fc5;
+  border-radius: 10px;
+  background: none;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.site-rotate.active {
+  background: #4b6fa5;
+}
+
+.site-presets {
+  display: flex;
+  gap: 3px;
+}
+
+.site-presets button {
+  flex: 1;
+  padding: 3px 2px;
+  border: 0;
+  border-radius: 7px;
+  background: #232326;
+  color: #ddd;
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.site-presets button:hover {
+  background: #4b6fa5;
+  color: #fff;
 }
