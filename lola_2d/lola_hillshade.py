@@ -24,6 +24,8 @@ import rasterio
 from matplotlib.colors import LightSource
 from rasterio.windows import Window, from_bounds
 
+from render_config import DPI, add_size_args, new_figure
+
 # Global LOLA DEM, simple cylindrical (equirectangular), int16 with a 0.5 m scale.
 # Not a COG: 8.5 GB stored in 1-row strips, so remote reads are slow.
 LOLA_URL = (
@@ -90,7 +92,8 @@ def download_crop(bounds: tuple[float, float, float, float], dest: Path, workers
     print(f"Saved to {dest}")
 
 
-def plot_hillshade(dem_path: Path, title: str, out: Path, vert_exag: float) -> None:
+def plot_hillshade(dem_path: Path, title: str, out: Path, vert_exag: float,
+                   width: int, height: int, show: bool) -> None:
     with rasterio.open(dem_path) as src:
         dem = src.read(1)
         b = src.bounds
@@ -109,22 +112,25 @@ def plot_hillshade(dem_path: Path, title: str, out: Path, vert_exag: float) -> N
                    vert_exag=vert_exag, dx=res * coslat, dy=res)
 
     extent = (lon_min, lon_max, lat_min, lat_max)
-    fig, axes = plt.subplots(1, 2, figsize=(15, 6.5), constrained_layout=True)
+    fig = new_figure(width, height, layout="constrained")
+    axes = fig.subplots(1, 2)
     axes[0].imshow(hs, cmap="gray", extent=extent, aspect=1 / coslat)
     axes[0].set_title("Hillshade")
     axes[1].imshow(rgb, extent=extent, aspect=1 / coslat)
     axes[1].set_title("Elevation + hillshade")
     fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=plt.cm.cividis), ax=axes[1],
-                 label="Elevation relative to 1737.4 km radius (m)", shrink=0.85)
+                 label="Elevation relative to 1737.4 km radius (m)", shrink=0.6)
     for ax in axes:
         ax.set_xlabel("Longitude (°)")
         ax.set_ylabel("Latitude (°)")
     fig.suptitle(f"{title} - LOLA DEM 118 m/px")
 
     out.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out, dpi=150)
+    fig.savefig(out, dpi=DPI)
     print(f"Figure saved to {out}")
-    plt.show()
+    if show:
+        plt.show()
+    plt.close(fig)
 
 
 def main() -> None:
@@ -133,6 +139,8 @@ def main() -> None:
     parser.add_argument("--bounds", nargs=4, type=float, metavar=("LON_MIN", "LAT_MIN", "LON_MAX", "LAT_MAX"))
     parser.add_argument("--vert-exag", type=float, default=2.0, help="vertical exaggeration of the terrain")
     parser.add_argument("--refresh", action="store_true", help="download again even if a cached crop exists")
+    parser.add_argument("--show", action="store_true", help="open an interactive window after saving")
+    add_size_args(parser)
     args = parser.parse_args()
 
     if args.bounds:
@@ -143,7 +151,8 @@ def main() -> None:
     dem_path = DATA_DIR / f"{name}_dem.tif"
     if args.refresh or not dem_path.exists():
         download_crop(bounds, dem_path)
-    plot_hillshade(dem_path, name.capitalize(), OUT_DIR / f"{name}_hillshade.png", args.vert_exag)
+    plot_hillshade(dem_path, name.capitalize(), OUT_DIR / f"{name}_hillshade_{args.width}x{args.height}.png",
+                   args.vert_exag, args.width, args.height, args.show)
 
 
 if __name__ == "__main__":

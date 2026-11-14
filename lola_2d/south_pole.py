@@ -4,16 +4,17 @@
 # ///
 """Plot the lunar south pole from LOLA DEMs in polar stereographic projection.
 
-Render a fast low-resolution preview first, then raise the resolution:
-    uv run south_pole.py --lat-limit -40                 # ~1500 px preview
-    uv run south_pole.py --lat-limit -40 --res 1000      # 1 km/px
-    uv run south_pole.py --lat-limit -85 --res 240       # pole at full 240 m/px
+The image is 1080x720 px by default and the DEM is resampled to exactly the
+pixels the map circle covers, so --lat-limit sets the zoom and --width/--height
+the detail:
+    uv run south_pole.py --lat-limit -40                 # whole cap down to 40°S
+    uv run south_pole.py --lat-limit -85                 # zoom on the pole
     uv run south_pole.py --lat-limit -40 --show          # also open a window
 
 Sources (downloaded once to data/raw/, converted to COGs in data/):
   - the polar DEM (--product, default LDEM_75S_240M) covers 75°S to the pole;
   - beyond that, a global LOLA DEM fills the map. The coarsest one that
-    matches --res is used: LDEM_4 (7.6 km/px, 4 MB), LDEM_16 (1.9 km/px,
+    matches the map resolution is used: LDEM_4 (7.6 km/px, 4 MB), LDEM_16 (1.9 km/px,
     66 MB) or LDEM_64 (474 m/px, 1 GB).
 """
 
@@ -36,6 +37,8 @@ from rasterio.transform import from_origin
 from rasterio.warp import reproject
 from rasterio.windows import Window
 
+from render_config import DPI, add_size_args, new_figure
+
 PDS_GDR = "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr"
 MOON_RADIUS = 1737400.0
 # "Moon (2015) - Sphere / Ocentric / South Polar": +proj=stere +lat_0=-90 +lon_0=0 +R=1737400
@@ -44,8 +47,12 @@ SOUTH_POLAR_CRS = CRS.from_string("IAU_2015:30135")
 # Global simple cylindrical DEMs, coarsest first: (product, meters per pixel)
 GLOBAL_PRODUCTS = [("LDEM_4", 7580), ("LDEM_16", 1895), ("LDEM_64", 474)]
 
-DEFAULT_SIZE_PX = 1500
-MAX_SIZE_PX = 3000  # memory grows with size²: ~0.5 GB at 1500 px, ~4 GB at 4600 px
+# Figure layout in pixels. The map axes are square and the circle fills
+# 1/MAP_MARGIN of them; the rest holds the longitude labels and scale bar.
+TITLE_PX = 60
+EDGE_PX = 10
+COLORBAR_PX = 110  # colorbar plus its tick labels
+MAP_MARGIN = 1.15
 
 # name: (lat, lon, diameter_km), degrees, east-positive longitude
 FEATURES = {
@@ -192,8 +199,21 @@ def draw_features(ax, lat_limit: float, radius_km: float) -> None:
                     path_effects=[patheffects.withStroke(linewidth=2.5, foreground="black")])
 
 
+def map_layout(width: int, height: int) -> tuple[float, float]:
+    """Side and left offset, in pixels, of the square map axes."""
+    side = min(height - TITLE_PX - EDGE_PX, width - COLORBAR_PX - 2 * EDGE_PX)
+    left = (width - side - COLORBAR_PX) / 2
+    return side, left
+
+
+def map_resolution(lat_limit: float, width: int, height: int) -> float:
+    """Meters per pixel so that the DEM grid matches the circle's pixels."""
+    side, _ = map_layout(width, height)
+    return 2 * stereo_radius(lat_limit) / (side / MAP_MARGIN)
+
+
 def plot_south_pole(dem: np.ndarray, sources: list[str], lat_limit: float, res: float,
-                    vert_exag: float, show: bool) -> Path:
+                    vert_exag: float, width: int, height: int, show: bool) -> Path:
     filled = np.where(np.isnan(dem), np.nanmean(dem), dem)
     ls = LightSource(azdeg=315, altdeg=35)
     norm = plt.Normalize(np.nanpercentile(dem, 1), np.nanpercentile(dem, 99))
@@ -204,7 +224,9 @@ def plot_south_pole(dem: np.ndarray, sources: list[str], lat_limit: float, res: 
     radius_km = stereo_radius(lat_limit) / 1000
     extent = (-radius_km, -radius_km + dem.shape[1] * res / 1000,
               radius_km - dem.shape[0] * res / 1000, radius_km)
-    fig, ax = plt.subplots(figsize=(10, 9), constrained_layout=True)
+    fig = new_figure(width, height)
+    side, left = map_layout(width, height)
+    ax = fig.add_axes((left / width, EDGE_PX / height, side / width, side / height))
     clip = Circle((0, 0), radius_km, transform=ax.transData)
     ax.imshow(rgb, extent=extent, clip_path=clip)
     ax.add_patch(Circle((0, 0), radius_km, fill=False, color="black", lw=1))
@@ -212,19 +234,21 @@ def plot_south_pole(dem: np.ndarray, sources: list[str], lat_limit: float, res: 
     draw_scale_bar(ax, radius_km)
     draw_features(ax, lat_limit, radius_km)
 
-    lim = 1.15 * radius_km
+    lim = MAP_MARGIN * radius_km
     ax.set_xlim(-lim, lim)
     ax.set_ylim(-lim, lim)
     ax.set_aspect("equal")
     ax.axis("off")
-    ax.set_title(f"Lunar south pole, {abs(lat_limit):g}°S to 90°S - polar stereographic, {res:g} m/px\n"
-                 f"LOLA {' + '.join(sources)}")
-    fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax, shrink=0.75,
+    fig.suptitle(f"Lunar south pole, {abs(lat_limit):g}°S to 90°S - polar stereographic, {res:.0f} m/px\n"
+                 f"LOLA {' + '.join(sources)}", y=1 - EDGE_PX / height, va="top", fontsize=12)
+    cax = fig.add_axes(((left + side + 15) / width, (EDGE_PX + 0.15 * side) / height,
+                        15 / width, 0.7 * side / height))
+    fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax,
                  label="Elevation relative to 1737.4 km radius (m)")
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    out = OUT_DIR / f"south_pole_{abs(lat_limit):g}s_{res:g}m.png"
-    fig.savefig(out, dpi=150)
+    out = OUT_DIR / f"south_pole_{abs(lat_limit):g}s_{width}x{height}.png"
+    fig.savefig(out, dpi=DPI)
     print(f"Figure saved to {out}")
     if show:
         plt.show()
@@ -235,27 +259,20 @@ def plot_south_pole(dem: np.ndarray, sources: list[str], lat_limit: float, res: 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--lat-limit", type=float, default=-75.0, help="outer latitude of the map (e.g. -85, -40)")
-    parser.add_argument("--res", type=float,
-                        help=f"map resolution in meters/pixel (default: about {DEFAULT_SIZE_PX} px across)")
     parser.add_argument("--product", default="LDEM_75S_240M",
                         help="LOLA polar DEM on PDS, e.g. LDEM_75S_240M, LDEM_80S_80M, LDEM_85S_20M")
     parser.add_argument("--vert-exag", type=float, default=2.0, help="vertical exaggeration of the terrain")
     parser.add_argument("--show", action="store_true", help="open an interactive window after saving")
-    parser.add_argument("--force", action="store_true", help=f"allow images larger than {MAX_SIZE_PX} px")
+    add_size_args(parser)
     args = parser.parse_args()
 
     if not -90 < args.lat_limit <= 0:
         parser.error("--lat-limit must be greater than -90 (the pole itself is a single point) and at most 0 (the equator)")
-    diameter = 2 * stereo_radius(args.lat_limit)
-    res = args.res or math.ceil(diameter / DEFAULT_SIZE_PX)
-    size = math.ceil(diameter / res)
-    if size > MAX_SIZE_PX and not args.force:
-        parser.error(f"{size}x{size} px would need several GB of RAM. Use a coarser --res "
-                     f"(>= {math.ceil(diameter / MAX_SIZE_PX)} m) or pass --force.")
-    print(f"Map: {abs(args.lat_limit):g}°S to the pole, {res:g} m/px, {size}x{size} px")
+    res = map_resolution(args.lat_limit, args.width, args.height)
+    print(f"Map: {abs(args.lat_limit):g}°S to the pole, {res:.0f} m/px, image {args.width}x{args.height} px")
 
     dem, sources = build_map(args.lat_limit, res, args.product)
-    plot_south_pole(dem, sources, args.lat_limit, res, args.vert_exag, args.show)
+    plot_south_pole(dem, sources, args.lat_limit, res, args.vert_exag, args.width, args.height, args.show)
 
 
 if __name__ == "__main__":
