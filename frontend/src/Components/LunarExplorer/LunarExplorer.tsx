@@ -4,6 +4,7 @@ import { useState } from "react";
 import FilterPanel from "./FilterPanel";
 import MapPanel from "./MapPanel";
 import AdvancedFilters from "./AdvancedFilters";
+import SiteList from "./SiteList";
 
 import { createInitialFilters } from "../../filters/filterRegistry";
 import { analyzeLunarSite } from "../../services/scientificApi";
@@ -19,6 +20,8 @@ import type {
 } from "../../types/customFilters";
 
 import { DEFAULT_TEMPERATURE_CONFIG } from "../../types/temperature";
+
+import type { LandingSite } from "../../types/sites";
 
 import type {
   TemperatureConfig,
@@ -126,6 +129,17 @@ export default function LunarExplorer() {
   function clearResults() {
     setResult(null);
     setError("");
+  }
+
+  // Pick a named landing site from the list
+  function selectLandingSite(site: LandingSite) {
+    changeSite({
+      id: site.id,
+      name: site.name,
+      latitude: site.latitude,
+      longitude: site.longitude,
+      details: site,
+    });
   }
 
   // Change selected lunar site
@@ -297,6 +311,12 @@ export default function LunarExplorer() {
           </p>
 
         </div>
+
+        {/* NAMED LANDING SITES */}
+        <SiteList
+          selectedId={selectedSite?.details?.id ?? null}
+          onSelect={selectLandingSite}
+        />
 
         {/* SELECTED LANDING SITE */}
         <div className="explorer-selected-site">

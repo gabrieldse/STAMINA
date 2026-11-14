@@ -11,6 +11,15 @@ import type {
   TemperatureSelectionStats,
 } from "../../types/temperature";
 
+import { LANDING_SITES, isOnPolarMap } from "../../types/sites";
+
+import SiteInfoCard from "./SiteInfoCard";
+
+// Named sites inside the 80°S map, drawn as markers on it.
+const MAP_SITES = LANDING_SITES.filter(isOnPolarMap).map(
+  ({ id, name, color, latitude, longitude }) => ({ id, name, color, latitude, longitude })
+);
+
 type Props = {
   selectedSite: LunarSite | null;
   filters: FilterStates;
@@ -27,6 +36,8 @@ type ViewerMessage =
       latitude: number;
       longitude: number;
       temperatures: SiteTemperatures;
+      // Set when a named site marker was clicked or focused.
+      siteId?: string;
     }
   | {
       type: "stamina:selection-stats";
@@ -53,6 +64,9 @@ export default function MapPanel({
 }: Props) {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [viewerReady, setViewerReady] = useState(false);
+  // Site whose info card the user closed; it reopens for the next site.
+  const [closedInfoId, setClosedInfoId] = useState<string | null>(null);
+  const infoSite = selectedSite?.details;
 
   // Messages from the map: readiness, clicked sites and selection area.
   useEffect(() => {
@@ -71,15 +85,27 @@ export default function MapPanel({
         Number.isFinite(message.latitude) &&
         Number.isFinite(message.longitude)
       ) {
-        const { latitude, longitude, temperatures } = message;
+        const { latitude, longitude, temperatures, siteId } = message;
+        const named = LANDING_SITES.find((site) => site.id === siteId);
 
-        onSiteSelect({
-          id: `map-${latitude.toFixed(4)}-${longitude.toFixed(4)}`,
-          name: `Map point ${formatCoordinates(latitude, longitude)}`,
-          latitude,
-          longitude,
-          temperatures,
-        });
+        onSiteSelect(
+          named
+            ? {
+                id: named.id,
+                name: named.name,
+                latitude: named.latitude,
+                longitude: named.longitude,
+                details: named,
+                temperatures,
+              }
+            : {
+                id: `map-${latitude.toFixed(4)}-${longitude.toFixed(4)}`,
+                name: `Map point ${formatCoordinates(latitude, longitude)}`,
+                latitude,
+                longitude,
+                temperatures,
+              }
+        );
       }
 
       if (message.type === "stamina:selection-stats") {
@@ -91,15 +117,35 @@ export default function MapPanel({
     return () => window.removeEventListener("message", handleMessage);
   }, [onSiteSelect, onTemperatureSelection]);
 
-  // The Temperature filter drives the layer and selection on the map.
-  useEffect(() => {
-    if (!viewerReady) return;
-
+  function postToViewer(message: object) {
     frameRef.current?.contentWindow?.postMessage(
-      { type: "stamina:temperature-config", config: temperature },
+      message,
       window.location.origin
     );
+  }
+
+  // Draw the named landing sites once the map is ready.
+  useEffect(() => {
+    if (viewerReady) postToViewer({ type: "stamina:sites", sites: MAP_SITES });
+  }, [viewerReady]);
+
+  // The Temperature filter drives the layer and selection on the map.
+  useEffect(() => {
+    if (viewerReady) postToViewer({ type: "stamina:temperature-config", config: temperature });
   }, [viewerReady, temperature]);
+
+  // A site picked from the list: pin it on the map, which replies with its
+  // temperatures. Sites outside the map just clear the pin.
+  const focusId =
+    selectedSite?.details && !selectedSite.temperatures
+      ? selectedSite.details.id
+      : null;
+  const focusOnMap = selectedSite?.details ? isOnPolarMap(selectedSite.details) : false;
+
+  useEffect(() => {
+    if (!viewerReady || !focusId) return;
+    postToViewer({ type: "stamina:focus-site", siteId: focusOnMap ? focusId : null });
+  }, [viewerReady, focusId, focusOnMap]);
 
   const activeFilters = Object.entries(filters)
     .filter(([, state]) => state.enabled)
@@ -119,6 +165,13 @@ export default function MapPanel({
           src="/lunar-map/index.html?embed=1"
           title="South pole surface temperature map"
         />
+
+        {infoSite && closedInfoId !== infoSite.id && (
+          <SiteInfoCard
+            site={infoSite}
+            onClose={() => setClosedInfoId(infoSite.id)}
+          />
+        )}
       </div>
 
       <div className="map-footer">

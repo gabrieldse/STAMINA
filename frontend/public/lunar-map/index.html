@@ -85,6 +85,7 @@
   body.embed #readout { min-width: 0; max-width: calc(100% - 24px); padding: 8px 10px; }
   body.embed #readout .t { font-size: 15px; }
   body.embed #pinned { display: none !important; }
+  body.embed { --bg: #2f2f2f; }
 
   #readout { bottom: 12px; left: 12px; min-width: 300px; font-variant-numeric: tabular-nums; }
   #readout .t { font-size: 20px; font-weight: 600; }
@@ -192,6 +193,8 @@ const conditions = [];
 let selMask = null;
 const image = document.createElement("canvas"), maskImage = document.createElement("canvas");
 const view = { x: 0, y: 0, k: 1 };  // centre in metres, pixels per metre
+// Named landing sites sent by the STAMINA app: { id, name, color, x, y } in metres.
+let appSites = [];
 
 // ---------- geometry: south polar stereographic, sphere R ----------
 function toLatLon(x, y) {
@@ -366,7 +369,8 @@ function draw() {
     ctx.textBaseline = "alphabetic";
   }
 
-  if ($("labels").checked) {
+  // The app's landing sites replace the crater labels.
+  if ($("labels").checked && appSites.length === 0) {
     ctx.font = `600 ${12 * s}px system-ui`; ctx.textAlign = "left"; ctx.lineJoin = "round";
     for (const f of meta.features) {
       const p = toScreen(f.x, f.y);
@@ -378,12 +382,52 @@ function draw() {
       ctx.fillStyle = "#fff"; ctx.fillText(f.name, p.sx + 7 * s, p.sy - 5 * s);
     }
   }
+  drawSites();
   if (pinned) {
     const p = toScreen(pinned.x, pinned.y);
     ctx.strokeStyle = "#00e5ff"; ctx.lineWidth = 2 * s;
-    ctx.beginPath(); ctx.arc(p.sx, p.sy, 7 * s, 0, 2 * Math.PI); ctx.stroke();
+    ctx.beginPath(); ctx.arc(p.sx, p.sy, (pinned.siteId ? 10 : 7) * s, 0, 2 * Math.PI); ctx.stroke();
   }
   drawScaleBar();
+}
+function drawSites() {
+  const s = dpr(), h = 12 * s;
+  ctx.font = `600 ${12 * s}px system-ui`; ctx.textAlign = "left"; ctx.lineJoin = "round";
+  for (const site of appSites) {
+    const p = toScreen(site.x, site.y);
+    ctx.beginPath(); ctx.arc(p.sx, p.sy, 5.5 * s, 0, 2 * Math.PI);
+    ctx.fillStyle = site.color; ctx.fill();
+    ctx.strokeStyle = "#000"; ctx.lineWidth = 2 * s; ctx.stroke();
+  }
+  // Labels go right, left, above or below their marker, wherever they don't
+  // overlap another label or marker; the rest show their name on hover.
+  // The selected site is placed first so it always gets a label.
+  const boxes = appSites.map((site) => {
+    const p = toScreen(site.x, site.y);
+    return { x0: p.sx - 6 * s, y0: p.sy - 6 * s, x1: p.sx + 6 * s, y1: p.sy + 6 * s };
+  });
+  const order = [...appSites].sort((a, b) => (b.id === pinned?.siteId) - (a.id === pinned?.siteId));
+  for (const site of order) {
+    const p = toScreen(site.x, site.y), w = ctx.measureText(site.name).width;
+    const candidates = [
+      [p.sx + 9 * s, p.sy - h / 2], [p.sx - 9 * s - w, p.sy - h / 2],
+      [p.sx - w / 2, p.sy - 9 * s - h], [p.sx - w / 2, p.sy + 9 * s],
+    ];
+    const free = candidates.map(([x, y]) => ({ x0: x - 2 * s, y0: y - 2 * s, x1: x + w + 2 * s, y1: y + h + 2 * s }))
+      .find((box) => boxes.every((o) => box.x1 < o.x0 || box.x0 > o.x1 || box.y1 < o.y0 || box.y0 > o.y1));
+    if (!free) continue;
+    boxes.push(free);
+    const x = free.x0 + 2 * s, y = free.y0 + 2 * s + h - 2 * s;
+    ctx.strokeStyle = "#000"; ctx.lineWidth = 3 * s; ctx.strokeText(site.name, x, y);
+    ctx.fillStyle = "#fff"; ctx.fillText(site.name, x, y);
+  }
+}
+function siteNear(sx, sy) {
+  const s = dpr();
+  return appSites.find((site) => {
+    const p = toScreen(site.x, site.y);
+    return Math.hypot(p.sx - sx, p.sy - sy) <= 10 * s;
+  });
 }
 function drawScaleBar() {
   const s = dpr(), target = 120 * s / view.k;  // metres in ~120 css px
@@ -407,12 +451,14 @@ function updateReadout(ev) {
     ? `${v.toFixed(1)} K swing · ${keyName(current)}`
     : `${v.toFixed(1)} K (${(v - 273.15).toFixed(0)} °C) · ${keyName(current)}`;
   let pos = fmtPos(toLatLon(w.x, w.y), w.x, w.y);
+  const site = siteNear(ev.offsetX * dpr(), ev.offsetY * dpr());
+  if (site) pos = `${site.name}  ·  ${pos}`;
   if (selMask) pos += selMask[pixelIndex(w.x, w.y)] ? "  ·  inside selection" : "  ·  outside selection";
   $("rPos").textContent = pos;
 }
 const COLUMNS = [["summer", ["summer"]], ["winter", ["winter"]], ["annual", ["summer", "winter"]]];
-async function pin(x, y) {
-  pinned = { x, y };
+async function pin(x, y, siteId = null) {
+  pinned = { x, y, siteId };
   const { lat, lon } = toLatLon(x, y);
   const temperatures = {};  // season -> statistic -> kelvin (null = no data)
   for (const [column, seasons] of COLUMNS) {
@@ -420,7 +466,7 @@ async function pin(x, y) {
     for (const [stat] of STATS) temperatures[column][stat] = valueAt(await getGrid({ seasons, stat }), x, y);
   }
   // Inside the STAMINA app the click selects the landing site there.
-  postToApp({ type: "stamina:site-selected", latitude: lat, longitude: lon, temperatures });
+  postToApp({ type: "stamina:site-selected", latitude: lat, longitude: lon, temperatures, siteId });
   $("pinned").style.display = "block";
   $("pPos").textContent = fmtPos({ lat, lon }, x, y);
   const rows = [`<tr><th></th><th>Summer</th><th>Winter</th><th>Annual</th></tr>`];
@@ -547,7 +593,17 @@ async function applyAppConfig(config) {
 }
 window.addEventListener("message", (event) => {
   if (!EMBED || event.origin !== window.location.origin) return;
-  if (event.data?.type === "stamina:temperature-config") applyAppConfig(event.data.config);
+  const data = event.data;
+  if (data?.type === "stamina:temperature-config") applyAppConfig(data.config);
+  if (data?.type === "stamina:sites") {
+    appSites = data.sites.map((site) => ({ ...site, ...toXY(site.latitude, site.longitude) }));
+    draw();
+  }
+  if (data?.type === "stamina:focus-site") {
+    const site = appSites.find((item) => item.id === data.siteId);
+    if (site) pin(site.x, site.y, site.id);
+    else { pinned = null; draw(); }
+  }
 });
 
 // ---------- interaction ----------
@@ -584,7 +640,10 @@ canvas.addEventListener("pointerup", (e) => {
   canvas.classList.remove("dragging");
   if (drag && !drag.moved) {
     const w = toWorld(e.offsetX * dpr(), e.offsetY * dpr());
-    if (Math.hypot(w.x, w.y) <= meta.radiusM) pin(w.x, w.y);
+    // A click on a landing site marker selects that site.
+    const site = siteNear(e.offsetX * dpr(), e.offsetY * dpr());
+    if (site) pin(site.x, site.y, site.id);
+    else if (Math.hypot(w.x, w.y) <= meta.radiusM) pin(w.x, w.y);
   }
   drag = null;
 });

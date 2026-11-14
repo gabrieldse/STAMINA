@@ -2,6 +2,8 @@ import type {
   CustomFilterEvaluation,
 } from "./customFilters";
 
+import type { LandingSite } from "./sites";
+
 export type FilterDefinition = {
   id: string;
   label: string;
@@ -44,6 +46,8 @@ export type LunarSite = {
   latitude?: number;
   longitude?: number;
   temperatures?: SiteTemperatures;
+  // Set when the site is one of the named landing sites.
+  details?: LandingSite;
 };
 
 export type ScientificResult = {

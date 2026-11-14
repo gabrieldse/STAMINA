@@ -1,0 +1,68 @@
+
+/* LANDING SITE LIST (styled after the Website draft's mission menu) */
+
+.site-list-group + .site-list-group {
+  margin-top: 14px;
+}
+
+.site-list-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.site-list-heading small {
+  color: #9a9a9a;
+  font-size: 11px;
+  font-weight: normal;
+}
+
+.site-list-items {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.site-list-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: #232326;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.site-list-item:hover {
+  background: #2c2c30;
+}
+
+.site-list-item.active {
+  border-color: #6b8fc5;
+  background: #4b6fa5;
+}
+
+.site-list-item i {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.site-list-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
