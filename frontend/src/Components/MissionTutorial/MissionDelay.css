@@ -9,8 +9,8 @@
   align-items: center;
   gap: 16px;
   padding-bottom: 18px;
-  border-bottom: 1px solid #293b5a;
-  color: #9db4d4;
+  border-bottom: 1px solid #535353;
+  color: #b9b9b9;
   font-size: 12px;
   letter-spacing: 1px;
 }
@@ -22,7 +22,7 @@
 }
 
 .delay-divider {
-  color: #5c7392;
+  color: #898989;
 }
 
 .delay-status {
@@ -40,7 +40,7 @@
 }
 
 .delay-intro {
-  color: #b4c5df;
+  color: #cacaca;
   line-height: 1.7;
 }
 
@@ -50,7 +50,7 @@
   border: 1px solid #ab7135;
   border-left: 5px solid #f4aa56;
   border-radius: 14px;
-  background: linear-gradient(135deg, #322719, #1c2434);
+  background: linear-gradient(135deg, #322719, #3a3a3a);
 }
 
 .delay-alert-heading {
@@ -86,7 +86,7 @@
   display: inline-block;
   margin-top: 8px;
   font-size: 11px;
-  color: #a8aebc;
+  color: #b2b2b2;
 }
 
 .delay-mission-id {
@@ -101,14 +101,14 @@
   flex-direction: column;
   gap: 8px;
   padding: 18px;
-  background: #0b1629;
-  border: 1px solid #293b5a;
+  background: #2c2c2c;
+  border: 1px solid #535353;
   border-radius: 10px;
 }
 
 .delay-mission-id span,
 .delay-date-card span {
-  color: #8ea9c9;
+  color: #acacac;
   font-size: 11px;
   letter-spacing: 1px;
 }
@@ -133,8 +133,8 @@
   flex-direction: column;
   gap: 12px;
   padding: 24px;
-  background: #0b1629;
-  border: 1px solid #334867;
+  background: #2c2c2c;
+  border: 1px solid #5f5f5f;
   border-radius: 12px;
 }
 
@@ -144,7 +144,7 @@
 }
 
 .delay-date-card small {
-  color: #91a5c3;
+  color: #aaaaaa;
 }
 
 .delay-date-card.revised {
@@ -159,8 +159,8 @@
 .delay-control {
   margin-top: 24px;
   padding: 24px;
-  background: #0b1629;
-  border: 1px solid #293b5a;
+  background: #2c2c2c;
+  border: 1px solid #535353;
   border-radius: 12px;
 }
 
@@ -188,7 +188,7 @@
 .delay-slider-labels {
   display: flex;
   justify-content: space-between;
-  color: #8096b6;
+  color: #9b9b9b;
   font-size: 12px;
   margin-top: 8px;
 }
@@ -196,8 +196,8 @@
 .delay-analysis {
   margin-top: 28px;
   padding: 24px;
-  background: #10253a;
-  border: 1px solid #315477;
+  background: #373737;
+  border: 1px solid #666666;
   border-radius: 12px;
 }
 
@@ -218,7 +218,7 @@
 }
 
 .delay-analysis p {
-  color: #c2d2e6;
+  color: #d4d4d4;
   line-height: 1.7;
 }
 
@@ -227,7 +227,7 @@
   margin-top: 16px;
   padding: 14px;
   background: transparent;
-  border: 1px solid #344969;
+  border: 1px solid #606060;
   color: #a7cfff;
   text-align: left;
   font-size: 14px;
@@ -235,11 +235,11 @@
 
 .delay-briefing {
   padding: 22px;
-  border: 1px solid #344969;
+  border: 1px solid #606060;
   border-top: none;
   border-radius: 0 0 10px 10px;
-  background: #0c192c;
-  color: #c4d1e4;
+  background: #2e2e2e;
+  color: #d4d4d4;
   line-height: 1.7;
 }
 
@@ -247,7 +247,7 @@
   margin-top: 28px;
   padding: 24px;
   border-left: 3px solid #73b8ff;
-  background: #0a182b;
+  background: #2c2c2c;
 }
 
 .delay-director-message span {
@@ -274,7 +274,7 @@
 }
 
 .delay-page .delay-back {
-  background: #263651;
+  background: #4d4d4d;
 }
 
 .delay-page .delay-primary {

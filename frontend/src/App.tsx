@@ -51,9 +51,19 @@ export default function App() {
       <header className="stamina-app-header">
 
         <div className="stamina-app-brand">
-          <span className="stamina-app-symbol">◉</span>
+          <img
+            className="stamina-app-logo"
+            src="/brand/stamina-logo.png"
+            alt="STAMINA"
+          />
 
-          <strong>STAMINA</strong>
+          <span className="stamina-app-logo-separator">x</span>
+
+          <img
+            className="stamina-app-logo stamina-app-logo-partner"
+            src="/brand/space-apps-logo.png"
+            alt="NASA Space Apps Challenge"
+          />
 
           <span className="stamina-app-separator">/</span>
 

@@ -15,7 +15,7 @@
 }
 
 .explorer-heading > p:last-child {
-  color: #9eafc7;
+  color: #b2b2b2;
 }
 
 .explorer-layout {
@@ -28,9 +28,9 @@
 .explorer-filters,
 .explorer-map,
 .explorer-results {
-  border: 1px solid #2a415e;
+  border: 1px solid #565656;
   border-radius: 14px;
-  background: #101e31;
+  background: #323232;
 }
 
 .explorer-filters {
@@ -44,13 +44,13 @@
 
 .explorer-filters > p,
 .filter-item small {
-  color: #9fb2cb;
+  color: #b5b5b5;
   line-height: 1.5;
 }
 
 .filter-item {
   padding: 18px 0;
-  border-bottom: 1px solid #2a415e;
+  border-bottom: 1px solid #565656;
 }
 
 .filter-heading {
@@ -96,9 +96,9 @@
   width: 100%;
   padding: 10px;
   margin-top: 10px;
-  background: #081526;
+  background: #292929;
   color: white;
-  border: 1px solid #355373;
+  border: 1px solid #666666;
   border-radius: 6px;
 }
 
@@ -118,7 +118,7 @@
 
 .map-header span,
 .map-footer {
-  color: #9fb3cd;
+  color: #b6b6b6;
   font-size: 12px;
 }
 
@@ -129,8 +129,8 @@
   align-items: center;
   background: radial-gradient(
     circle at center,
-    #253b55,
-    #071321 75%
+    #4f4f4f,
+    #262626 75%
   );
   text-align: center;
 }
@@ -146,7 +146,7 @@
 
 .map-empty-content p,
 .map-empty-content small {
-  color: #9fb3cd;
+  color: #b6b6b6;
 }
 
 .map-test-sites {
@@ -159,15 +159,15 @@
 
 .map-test-sites button {
   padding: 10px 14px;
-  border: 1px solid #3f5b7b;
+  border: 1px solid #6f6f6f;
   border-radius: 7px;
-  background: #18304b;
+  background: #434343;
   color: white;
   cursor: pointer;
 }
 
 .map-test-sites button.active {
-  background: #2668b4;
+  background: #7f7f7f;
   border-color: #80bfff;
 }
 
@@ -188,14 +188,14 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  color: #b7c9df;
+  color: #cbcbcb;
 }
 
 .explorer-analysis-form input {
   padding: 11px;
   color: white;
-  background: #081526;
-  border: 1px solid #3e5775;
+  background: #292929;
+  border: 1px solid #6b6b6b;
   border-radius: 7px;
 }
 
@@ -221,16 +221,16 @@
 
 .explorer-result-grid > div {
   padding: 18px;
-  border: 1px solid #2a415e;
+  border: 1px solid #565656;
   border-radius: 9px;
-  background: #0a1728;
+  background: #2b2b2b;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
 .explorer-result-grid span {
-  color: #9fb3cd;
+  color: #b6b6b6;
   font-size: 12px;
 }
 
@@ -243,7 +243,7 @@
 }
 
 .explorer-data-note {
-  color: #8299b6;
+  color: #9c9c9c;
   font-size: 12px;
   line-height: 1.6;
   margin-top: 20px;
@@ -283,7 +283,7 @@
     330px;
 
   overflow: hidden;
-  background: #081321;
+  background: #262626;
 }
 
 /* LEFT PANEL */
@@ -293,8 +293,8 @@
   min-height: 0;
   overflow-y: auto;
 
-  background: #101d30;
-  border-right: 1px solid #293e59;
+  background: #323232;
+  border-right: 1px solid #535353;
 }
 
 .explorer-pane-caption {
@@ -304,9 +304,9 @@
   gap: 8px;
 
   padding: 19px 20px;
-  border-bottom: 1px solid #293e59;
+  border-bottom: 1px solid #535353;
 
-  color: #83a3c8;
+  color: #a5a5a5;
   font-size: 10px;
   letter-spacing: 1px;
 }
@@ -326,7 +326,7 @@
   min-width: 0;
   min-height: 0;
 
-  background: #07111f;
+  background: #252525;
 }
 
 .explorer-map-toolbar {
@@ -339,8 +339,8 @@
   gap: 14px;
 
   padding: 12px 20px;
-  background: #0c192a;
-  border-bottom: 1px solid #293e59;
+  background: #2d2d2d;
+  border-bottom: 1px solid #535353;
 }
 
 .explorer-map-toolbar > div {
@@ -354,7 +354,7 @@
 }
 
 .explorer-map-toolbar span {
-  color: #839fbe;
+  color: #a0a0a0;
   font-size: 11px;
 }
 
@@ -383,7 +383,7 @@
 
   border: none;
   border-radius: 0;
-  background: #0a1728;
+  background: #2b2b2b;
 }
 
 .explorer-map-area .map-workspace {
@@ -401,8 +401,8 @@
 .explorer-timeline {
   flex-shrink: 0;
   padding: 15px 20px;
-  background: #101f33;
-  border-top: 1px solid #293e59;
+  background: #333333;
+  border-top: 1px solid #535353;
 }
 
 .explorer-timeline-heading,
@@ -418,16 +418,16 @@
 
 .explorer-timeline-heading span,
 .explorer-timeline-labels {
-  color: #90a9c8;
+  color: #acacac;
   font-size: 11px;
 }
 
 .explorer-timeline-track {
   height: 14px;
   margin-top: 13px;
-  border: 1px dashed #45617e;
+  border: 1px dashed #737373;
   border-radius: 4px;
-  background: #0a1627;
+  background: #2a2a2a;
 }
 
 .explorer-timeline-labels {
@@ -441,13 +441,13 @@
   min-height: 0;
   overflow-y: auto;
 
-  background: #101d30;
-  border-left: 1px solid #293e59;
+  background: #323232;
+  border-left: 1px solid #535353;
 }
 
 .explorer-inspector-heading {
   padding: 24px 20px;
-  border-bottom: 1px solid #293e59;
+  border-bottom: 1px solid #535353;
 }
 
 .explorer-panel-kicker {
@@ -463,7 +463,7 @@
 }
 
 .explorer-inspector-heading > p:last-child {
-  color: #a4b8d1;
+  color: #bbbbbb;
   font-size: 13px;
   line-height: 1.6;
 }
@@ -474,11 +474,11 @@
   gap: 8px;
 
   padding: 20px;
-  border-bottom: 1px solid #293e59;
+  border-bottom: 1px solid #535353;
 }
 
 .explorer-selected-site span {
-  color: #8fa9c6;
+  color: #ababab;
   font-size: 10px;
   letter-spacing: 1px;
 }
@@ -488,12 +488,12 @@
 }
 
 .explorer-selected-site small {
-  color: #a4b8d1;
+  color: #bbbbbb;
 }
 
 .explorer-inspector-section {
   padding: 20px;
-  border-bottom: 1px solid #293e59;
+  border-bottom: 1px solid #535353;
 }
 
 .explorer-inspector-section h3 {
@@ -547,13 +547,13 @@
 
 .explorer-engine-status {
   padding: 20px;
-  color: #9aafc9;
+  color: #b2b2b2;
   font-size: 12px;
   line-height: 1.7;
 }
 
 .explorer-engine-status small {
-  color: #7892b2;
+  color: #959595;
 }
 
 /* RESPONSIVE */
@@ -589,14 +589,14 @@
     order: 2;
     overflow: visible;
     border-right: none;
-    border-top: 1px solid #293e59;
+    border-top: 1px solid #535353;
   }
 
   .explorer-right-panel {
     order: 3;
     overflow: visible;
     border-left: none;
-    border-top: 1px solid #293e59;
+    border-top: 1px solid #535353;
   }
 
   .explorer-right-panel .explorer-result-grid {
@@ -609,7 +609,7 @@
 .map-workspace-embed {
   display: block;
   padding: 0;
-  background: #0e1014;
+  background: #2f2f2f;
 }
 
 .lunar-map-frame {
@@ -632,18 +632,18 @@
 .explorer-temperature-table th,
 .explorer-temperature-table td {
   padding: 6px 0;
-  border-top: 1px solid #293e59;
+  border-top: 1px solid #535353;
   text-align: right;
   font-weight: normal;
 }
 
 .explorer-temperature-table th {
-  color: #839fbe;
+  color: #a0a0a0;
   font-size: 11px;
 }
 
 .explorer-temperature-table th:first-child,
 .explorer-temperature-table td:first-child {
   text-align: left;
-  color: #9fb3cd;
+  color: #b6b6b6;
 }

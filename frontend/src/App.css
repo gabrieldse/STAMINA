@@ -1,6 +1,6 @@
 
 .app {
-  background: #07101d;
+  background: #242424;
   color: #eef4ff;
   min-height: 100vh;
 }
@@ -13,8 +13,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #1c2b40;
-  background: #081321;
+  border-bottom: 1px solid #404040;
+  background: #262626;
 }
 
 .logo {
@@ -36,7 +36,7 @@
 }
 
 .navbar nav a {
-  color: #adbed5;
+  color: #c1c1c1;
   text-decoration: none;
   font-size: 14px;
 }
@@ -47,8 +47,8 @@
 
 .nav-button {
   color: #eaf4ff;
-  background: #173859;
-  border: 1px solid #3d719b;
+  background: #4a4a4a;
+  border: 1px solid #7e7e7e;
   padding: 11px 20px;
   border-radius: 7px;
   text-decoration: none;
@@ -65,9 +65,9 @@
   padding: 100px 8%;
   background:
     linear-gradient(90deg,
-      rgba(5, 13, 26, 0.98) 0%,
-      rgba(5, 13, 26, 0.86) 47%,
-      rgba(5, 13, 26, 0.20) 100%),
+      rgba(33, 33, 33, 0.98) 0%,
+      rgba(33, 33, 33, 0.86) 47%,
+      rgba(33, 33, 33, 0.20) 100%),
     url("https://images-assets.nasa.gov/image/PIA25972/PIA25972~orig.jpg");
   background-size: cover;
   background-position: center;
@@ -98,7 +98,7 @@
 }
 
 .hero-description {
-  color: #b2c3dc;
+  color: #c7c7c7;
   font-size: 17px;
   line-height: 1.8;
   max-width: 590px;
@@ -131,7 +131,7 @@
 }
 
 .outline-btn {
-  border: 1px solid #587394;
+  border: 1px solid #888888;
   color: #e2efff;
 }
 
@@ -157,7 +157,7 @@
 
 .section-heading > p:last-child,
 .about-content > p:not(.eyebrow) {
-  color: #9fb1cb;
+  color: #b5b5b5;
   line-height: 1.8;
 }
 
@@ -165,10 +165,10 @@
 
 .map-placeholder {
   height: 440px;
-  border: 1px solid #28415d;
+  border: 1px solid #545454;
   border-radius: 16px;
   background:
-    radial-gradient(circle at 50% 50%, #243954, #0a1728 65%);
+    radial-gradient(circle at 50% 50%, #4e4e4e, #2b2b2b 65%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -189,14 +189,14 @@
 }
 
 .map-content p {
-  color: #a4b7d1;
+  color: #bbbbbb;
 }
 
 .coming-soon {
   display: inline-block;
   margin-top: 18px;
   padding: 9px 14px;
-  border: 1px solid #3c5878;
+  border: 1px solid #6c6c6c;
   border-radius: 5px;
   font-size: 11px;
   letter-spacing: 2px;
@@ -206,7 +206,7 @@
 /* FEATURES */
 
 .features {
-  background: #0b1728;
+  background: #2b2b2b;
 }
 
 .feature-grid {
@@ -217,9 +217,9 @@
 
 .feature-card {
   padding: 28px;
-  border: 1px solid #263b55;
+  border: 1px solid #4f4f4f;
   border-radius: 12px;
-  background: #101f33;
+  background: #333333;
 }
 
 .feature-icon {
@@ -233,7 +233,7 @@
 }
 
 .feature-card p {
-  color: #9eafc9;
+  color: #b3b3b3;
   font-size: 14px;
   line-height: 1.8;
 }
@@ -252,7 +252,7 @@
 /* FOOTER */
 
 .footer {
-  border-top: 1px solid #22354e;
+  border-top: 1px solid #4a4a4a;
   padding: 35px 8%;
   text-align: center;
 }
@@ -262,7 +262,7 @@
 }
 
 .footer p {
-  color: #8194af;
+  color: #989898;
   font-size: 12px;
 }
 
@@ -316,16 +316,16 @@
   align-items: center;
   gap: 16px;
   padding: 14px 6%;
-  background: #071321;
-  border-bottom: 1px solid #2a405d;
-  color: #a9c5e5;
+  background: #22548f;
+  border-bottom: 0;
+  color: #c7c7c7;
   font-size: 12px;
   letter-spacing: 1.5px;
 }
 
 .tutorial-exit-bar button {
-  background: #203550;
-  border: 1px solid #3c597b;
+  background: #4a4a4a;
+  border: 1px solid #6d6d6d;
   border-radius: 7px;
   color: white;
   padding: 10px 16px;
@@ -333,7 +333,7 @@
 }
 
 .tutorial-exit-bar button:hover {
-  background: #2c4d73;
+  background: #616161;
 }
 
 /* =========================================
@@ -347,7 +347,7 @@
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  background: #07111e;
+  background: #242424;
   color: #eef4ff;
 }
 
@@ -359,8 +359,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  background: #0c192b;
-  border-bottom: 1px solid #293e59;
+  /* Header bar of the Website draft */
+  background: #22548f;
+  border-bottom: 0;
 }
 
 .stamina-app-brand {
@@ -370,9 +371,18 @@
   white-space: nowrap;
 }
 
-.stamina-app-symbol {
-  color: #78bcff;
-  font-size: 24px;
+.stamina-app-logo {
+  display: block;
+  height: 22px;
+  width: auto;
+}
+
+.stamina-app-logo-partner {
+  height: 34px;
+}
+
+.stamina-app-logo-separator {
+  font-weight: 700;
 }
 
 .stamina-app-brand strong {
@@ -381,11 +391,11 @@
 }
 
 .stamina-app-separator {
-  color: #56718f;
+  color: #a9c1df;
 }
 
 .stamina-app-product {
-  color: #a8bdd5;
+  color: #e3ecf7;
   font-size: 13px;
 }
 
@@ -396,28 +406,33 @@
 }
 
 .stamina-app-mode {
-  color: #8ca9c9;
+  color: #d3e0f0;
   font-size: 12px;
   margin-right: 8px;
 }
 
 .stamina-app-actions button {
   padding: 9px 15px;
-  background: #172940;
-  border: 1px solid #365170;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 7px;
-  color: #dcecff;
+  color: #fff;
   cursor: pointer;
 }
 
 .stamina-app-actions button:hover {
-  background: #243d5b;
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .stamina-app-actions .stamina-app-tutorial-button {
-  background: #2465bd;
-  border-color: #4084d6;
-  color: white;
+  background: #fff;
+  border-color: #fff;
+  color: #22548f;
+  font-weight: 600;
+}
+
+.stamina-app-actions .stamina-app-tutorial-button:hover {
+  background: #e3ecf7;
 }
 
 /* MAIN WORK AREA */
@@ -436,9 +451,9 @@
   justify-content: space-between;
   gap: 12px;
   padding: 9px 20px;
-  background: #091522;
-  border-top: 1px solid #273b55;
-  color: #7e9ab9;
+  background: #272727;
+  border-top: 1px solid #505050;
+  color: #9c9c9c;
   font-size: 11px;
 }
 
@@ -450,16 +465,16 @@
   align-items: center;
   gap: 12px;
   padding: 14px 6%;
-  background: #071321;
-  border-bottom: 1px solid #2a405d;
-  color: #a9c5e5;
+  background: #22548f;
+  border-bottom: 0;
+  color: #c7c7c7;
   font-size: 12px;
 }
 
 .tutorial-exit-bar button {
   padding: 10px 16px;
-  background: #203550;
-  border: 1px solid #3c597b;
+  background: #4a4a4a;
+  border: 1px solid #6d6d6d;
   border-radius: 7px;
   color: white;
   cursor: pointer;

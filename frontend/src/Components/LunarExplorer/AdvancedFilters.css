@@ -1,7 +1,7 @@
 
 .advanced-filters {
   padding: 18px 20px;
-  border-top: 1px solid #30445e;
+  border-top: 1px solid #595959;
 }
 
 .advanced-toggle {
@@ -10,16 +10,16 @@
   justify-content: space-between;
   width: 100%;
   padding: 13px;
-  border: 1px solid #3a5777;
+  border: 1px solid #6a6a6a;
   border-radius: 8px;
-  background: #17304a;
+  background: #424242;
   color: #d8eaff;
   font-weight: 600;
   cursor: pointer;
 }
 
 .advanced-toggle:hover {
-  background: #22415f;
+  background: #525252;
 }
 
 .advanced-content {
@@ -27,7 +27,7 @@
 }
 
 .advanced-description {
-  color: #a7bad3;
+  color: #bdbdbd;
   font-size: 12px;
   line-height: 1.6;
 }
@@ -35,8 +35,8 @@
 .advanced-filter-card {
   margin: 16px 0;
   padding: 16px;
-  background: #0b192b;
-  border: 1px solid #334d6b;
+  background: #2d2d2d;
+  border: 1px solid #616161;
   border-radius: 10px;
 }
 
@@ -52,7 +52,7 @@
   align-items: center;
   gap: 9px;
   font-size: 12px;
-  color: #c3d4e9;
+  color: #d6d6d6;
 }
 
 .advanced-switch input {
@@ -73,7 +73,7 @@
   gap: 7px;
   margin-top: 14px;
   font-size: 12px;
-  color: #b8cee5;
+  color: #cecece;
 }
 
 .advanced-field input,
@@ -81,9 +81,9 @@
   width: 100%;
   min-width: 0;
   padding: 10px;
-  background: #10243a;
+  background: #373737;
   color: #eef5ff;
-  border: 1px solid #3a5878;
+  border: 1px solid #6b6b6b;
   border-radius: 6px;
   font-size: 12px;
 }
@@ -101,7 +101,7 @@
   gap: 10px;
   margin-top: 20px;
   font-size: 12px;
-  color: #b8cce5;
+  color: #cecece;
 }
 
 .advanced-threshold strong {
@@ -120,9 +120,9 @@
   gap: 4px;
   padding: 10px;
   margin-top: 16px;
-  background: #152c44;
+  background: #3e3e3e;
   border-radius: 6px;
-  color: #a8c7e5;
+  color: #c6c6c6;
   font-size: 11px;
 }
 
@@ -134,7 +134,7 @@
   width: 100%;
   padding: 12px;
   background: transparent;
-  border: 1px dashed #6a9dcc;
+  border: 1px dashed #9b9b9b;
   border-radius: 8px;
   color: #91c9ff;
   cursor: pointer;
@@ -142,13 +142,13 @@
 }
 
 .advanced-add:hover {
-  background: #19324c;
+  background: #444444;
 }
 
 .advanced-disclaimer {
   margin-top: 16px;
   font-size: 11px;
-  color: #8099b6;
+  color: #9b9b9b;
   line-height: 1.6;
 }
 
@@ -160,8 +160,8 @@
   gap: 10px;
   margin: 16px 0 22px;
   padding: 16px;
-  background: #11263d;
-  border: 1px dashed #537da5;
+  background: #393939;
+  border: 1px dashed #8e8e8e;
   border-radius: 10px;
 }
 
@@ -173,22 +173,22 @@
 .advanced-upload input[type="file"] {
   width: 100%;
   max-width: 100%;
-  color: #b9cde5;
+  color: #cfcfcf;
   font-size: 12px;
 }
 
 .advanced-upload input::file-selector-button {
   padding: 8px 12px;
   margin-right: 10px;
-  border: 1px solid #527ca7;
+  border: 1px solid #8e8e8e;
   border-radius: 6px;
-  background: #22456a;
+  background: #585858;
   color: white;
   cursor: pointer;
 }
 
 .advanced-upload small {
-  color: #8faac7;
+  color: #ababab;
 }
 
 .advanced-upload-success {
