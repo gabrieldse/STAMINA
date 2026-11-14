@@ -1,0 +1,5 @@
+# Downloaded DEMs and their COG conversions (GBs, re-created by the scripts)
+data/
+# Rendered figures
+output/
+__pycache__/
