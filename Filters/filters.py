@@ -1,6 +1,11 @@
 from pathlib import Path
 
-import Sunlight.illumination as illum
+# Direct script execution starts Python's import search in this folder.
+if __package__ in (None, ""):
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+import Filters.Sunlight.illumination as illum
 import lola_2d.lola_hillshade as lola_hs
 
 

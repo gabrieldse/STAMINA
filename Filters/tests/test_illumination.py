@@ -1,4 +1,5 @@
 import sys
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -6,15 +7,18 @@ from unittest.mock import patch
 
 import numpy as np
 import rasterio
+import matplotlib.image as mpimg
 from rasterio.io import MemoryFile
 from rasterio.transform import from_origin
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "Sunlight"))
+ROOT = Path(__file__).resolve().parent.parent.parent
+# Allow direct execution as well as discovery from the repository root.
+sys.path.insert(0, str(ROOT))
 
-import illumination as illumination
-import Filters
-import moon_surface_getter
+import Filters.Sunlight.illumination as illumination
+import Filters.Sunlight.overlay as overlay
+import Filters.filters as Filters
+import SurfaceData.moon_surface_getter as moon_surface_getter
 
 
 class VisibilityTests(unittest.TestCase):
@@ -47,6 +51,60 @@ class VisibilityTests(unittest.TestCase):
     def visibility(self, **kwargs):
         self.dem.write(self.heights, 1)
         return illumination.check_visibility(0, 0, 0, self.sun, dem=self.dem, **kwargs)
+
+    def test_filter_uses_same_illumination_module(self):
+        self.assertIs(Filters.illum, illumination)
+
+    def test_overlay_maps_results_to_dem_pixels(self):
+        self.save_dem()
+        output = Path(self.tempdir.name) / "overlay.png"
+        k = illumination.meters_per_degree
+        positions = [self.dem.xy(1, 5), self.dem.xy(2, 1), self.dem.xy(5, 2)]
+        results = [(x / k, y / k, value) for (x, y), value in
+                   zip(positions, (True, False, None))]
+        bounds = (-250 / k, -250 / k, 250 / k, 250 / k)
+        with patch.object(overlay, "run_illumination_filter", return_value=iter(results)) as run:
+            returned = overlay.save_illumination_overlay(
+                123, bounds, self.path, output, max_terrain_height_m=500,
+            )
+        run.assert_called_once_with(123, bounds, self.path, max_terrain_height_m=500)
+        self.assertEqual(returned, output)
+        pixels = mpimg.imread(output)
+        self.assertEqual(pixels.shape, (7, 7, 4))
+        np.testing.assert_allclose(pixels[1, 5], np.array([255, 220, 0, 160]) / 255)
+        np.testing.assert_allclose(pixels[5, 2], np.array([100, 130, 160, 160]) / 255)
+        self.assertEqual(np.count_nonzero(pixels[:, :, 3]), 2)
+        self.assertEqual(pixels[2, 1, 3], 0)
+        self.assertEqual(pixels[0, 0, 3], 0)
+
+    def test_overlay_runs_real_filter_and_respects_output_bounds(self):
+        self.save_dem()
+        output = Path(self.tempdir.name) / "overlay.png"
+        k = illumination.meters_per_degree
+        bounds = (-50 / k, -50 / k, 50 / k, 50 / k)
+        site, _ = illumination.sme.get_site_vec(0, 0, 0, 0)
+        _, _, up = illumination.directions(0, 0)
+        sun = site + 1e8 * up
+        with patch.object(illumination.sme, "get_sun_vec", return_value=(sun, 0)):
+            overlay.save_illumination_overlay(0, bounds, self.path, output)
+        pixels = mpimg.imread(output)
+        self.assertEqual(np.count_nonzero(pixels[:, :, 3]), 1)
+        self.assertAlmostEqual(pixels[3, 3, 3], 160 / 255)
+
+    def test_overlay_requires_png_extension(self):
+        with self.assertRaisesRegex(ValueError, "PNG"):
+            overlay.save_illumination_overlay(0, None, self.path, "overlay.jpg")
+
+    def test_modules_run_as_scripts_from_another_directory(self):
+        scripts = (ROOT / "Filters" / "Filters.py",
+                   ROOT / "Filters" / "Sunlight" / "illumination.py")
+        for script in scripts:
+            with self.subTest(script=script):
+                result = subprocess.run(
+                    [sys.executable, str(script)], cwd=self.tempdir.name,
+                    capture_output=True, text=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_ridge_towards_sun_blocks_ray(self):
         self.heights[3, 5] = 100

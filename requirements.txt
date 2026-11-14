@@ -3,3 +3,4 @@ numba
 numpy
 rasterio
 spiceypy
+solshade==1.0.0
