@@ -3,3 +3,4 @@ data/
 # Rendered figures
 output/
 __pycache__/
+web/data/
