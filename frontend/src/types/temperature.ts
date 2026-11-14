@@ -17,6 +17,8 @@ export type KelvinRange = {
 };
 
 export type TemperatureConfig = {
+  // Off: the map shows the plain Moon (LOLA relief).
+  enabled: boolean;
   season: TemperatureSeason;
   statistic: TemperatureStatistic;
   iceStabilityThresholdK: number;
@@ -55,6 +57,7 @@ export const TEMPERATURE_STATISTICS: {
 export const KELVIN_SLIDER = { min: 0, max: 450 };
 
 export const DEFAULT_TEMPERATURE_CONFIG: TemperatureConfig = {
+  enabled: false,
   season: "summer",
   statistic: "max",
   iceStabilityThresholdK: 110,

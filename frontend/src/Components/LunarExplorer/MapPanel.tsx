@@ -14,16 +14,19 @@ import type {
 import { LANDING_SITES, isOnPolarMap } from "../../types/sites";
 
 import SiteInfoCard from "./SiteInfoCard";
+import SiteList from "./SiteList";
+import type { LandingSite } from "../../types/sites";
 
 // Named sites inside the 80°S map, drawn as markers on it.
 const MAP_SITES = LANDING_SITES.filter(isOnPolarMap).map(
-  ({ id, name, color, latitude, longitude }) => ({ id, name, color, latitude, longitude })
+  ({ id, name, color, latitude, longitude, region }) => ({ id, name, color, latitude, longitude, region })
 );
 
 type Props = {
   selectedSite: LunarSite | null;
   filters: FilterStates;
   onSiteSelect: (site: LunarSite) => void;
+  onLandingSiteSelect: (site: LandingSite) => void;
   temperature: TemperatureConfig;
   onTemperatureSelection: (stats: TemperatureSelectionStats | null) => void;
 };
@@ -36,6 +39,7 @@ type ViewerMessage =
       latitude: number;
       longitude: number;
       temperatures: SiteTemperatures;
+      elevationM: number | null;
       // Set when a named site marker was clicked or focused.
       siteId?: string;
     }
@@ -59,6 +63,7 @@ export default function MapPanel({
   selectedSite,
   filters,
   onSiteSelect,
+  onLandingSiteSelect,
   temperature,
   onTemperatureSelection,
 }: Props) {
@@ -85,7 +90,7 @@ export default function MapPanel({
         Number.isFinite(message.latitude) &&
         Number.isFinite(message.longitude)
       ) {
-        const { latitude, longitude, temperatures, siteId } = message;
+        const { latitude, longitude, temperatures, elevationM, siteId } = message;
         const named = LANDING_SITES.find((site) => site.id === siteId);
 
         onSiteSelect(
@@ -97,6 +102,7 @@ export default function MapPanel({
                 longitude: named.longitude,
                 details: named,
                 temperatures,
+                elevationM,
               }
             : {
                 id: `map-${latitude.toFixed(4)}-${longitude.toFixed(4)}`,
@@ -104,6 +110,7 @@ export default function MapPanel({
                 latitude,
                 longitude,
                 temperatures,
+                elevationM,
               }
         );
       }
@@ -155,7 +162,12 @@ export default function MapPanel({
     <section className="explorer-map">
       <div className="map-header">
         <strong>Lunar South Pole</strong>
-        <span>Diviner surface temperature · 80°S to the pole</span>
+        <span>
+          {temperature.enabled
+            ? "Diviner surface temperature"
+            : "LOLA relief"}
+          {" · 80°S to the pole"}
+        </span>
       </div>
 
       <div className="map-workspace map-workspace-embed">
@@ -164,6 +176,11 @@ export default function MapPanel({
           className="lunar-map-frame"
           src="/lunar-map/index.html?embed=1"
           title="South pole surface temperature map"
+        />
+
+        <SiteList
+          selectedId={infoSite?.id ?? null}
+          onSelect={onLandingSiteSelect}
         />
 
         {infoSite && closedInfoId !== infoSite.id && (

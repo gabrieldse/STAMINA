@@ -12,7 +12,10 @@ embeds in its Lunar South Pole map. The viewer also runs on its own:
     uv run diviner_web.py --size 2048     # finer grids (4x the data)
     uv run diviner_web.py --no-serve      # only build the data, e.g. before `npm run dev`
 
-Each grid is uint16 little-endian, kelvin x 100, 0 = no data.
+Each temperature grid is uint16 little-endian, kelvin x 100, 0 = no data.
+The base map is the LOLA polar DEM resampled to the same grid with
+south_pole.py: lola_hillshade.bin (uint8 shading) and lola_elevation.bin
+(int16 metres relative to 1737.4 km, -32768 = no data).
 """
 
 import argparse
@@ -24,16 +27,34 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
+from matplotlib.colors import LightSource
+
 from diviner_maps import ICE_THRESHOLD_K, LAT_LIMIT, LAYERS, read_layer
-from south_pole import FEATURES, latlon_to_xy, stereo_radius
+from south_pole import FEATURES, MOUNTAINS, build_map, latlon_to_xy, stereo_radius
 
 SCALE = 100  # stored value = kelvin * SCALE
+LOLA_PRODUCT = "LDEM_75S_240M"  # polar DEM covering 75°S to the pole
 WEB_DIR = Path(__file__).resolve().parent.parent / "frontend" / "public" / "lunar-map"
+
+
+def build_base_map(size: int, data_dir: Path) -> dict:
+    """Plain Moon shown before any data layer: LOLA hillshade plus elevation."""
+    res = 2 * stereo_radius(LAT_LIMIT) / size
+    dem, sources = build_map(LAT_LIMIT, res, LOLA_PRODUCT)
+    dem = dem[:size, :size]
+    filled = np.where(np.isnan(dem), np.nanmean(dem), dem)
+    shade = LightSource(azdeg=315, altdeg=35).hillshade(filled, vert_exag=2, dx=res, dy=res)
+    (shade * 255).round().astype("u1").tofile(data_dir / "lola_hillshade.bin")
+    np.where(np.isnan(dem), -32768, np.round(dem)).astype("<i2").tofile(data_dir / "lola_elevation.bin")
+    print(f"  base map: LOLA {' + '.join(sources)}, elevation {np.nanmin(dem):.0f}..{np.nanmax(dem):.0f} m")
+    return {"hillshade": "lola_hillshade.bin", "elevation": "lola_elevation.bin",
+            "source": f"LOLA {' + '.join(sources)} elevation"}
 
 
 def build(size: int) -> None:
     data_dir = WEB_DIR / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
+    base = build_base_map(size, data_dir)
     layers = []
     for layer in LAYERS:
         grid = read_layer(layer, size)
@@ -55,7 +76,7 @@ def build(size: int) -> None:
         if lat <= LAT_LIMIT:
             x, y = latlon_to_xy(lat, lon)
             features.append({"name": name, "lat": lat, "lon": lon, "x": round(float(x)), "y": round(float(y)),
-                             "diameterKm": diameter_km})
+                             "diameterKm": diameter_km, "kind": "mons" if name in MOUNTAINS else "crater"})
 
     lut = (plt.cm.inferno(np.linspace(0, 1, 256))[:, :3] * 255).round().astype(int).tolist()
     meta = {
@@ -68,6 +89,7 @@ def build(size: int) -> None:
         "layers": layers,
         "features": features,
         "colormap": lut,
+        "base": base,
         "source": "Diviner polar temperatures, Williams et al. (2019), via NASA Moon Trek",
     }
     (data_dir / "meta.json").write_text(json.dumps(meta))

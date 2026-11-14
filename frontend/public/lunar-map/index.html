@@ -115,6 +115,7 @@
   <div id="controlsBody">
   <div class="sub" id="source"></div>
 
+  <label class="check"><input type="checkbox" id="tempOn" checked>Temperature layer (off: plain Moon, LOLA relief)</label>
   <span class="label">Layer</span>
   <div class="key" id="layerKey"></div>
   <canvas id="colorbar" width="256" height="1"></canvas>
@@ -195,6 +196,11 @@ const image = document.createElement("canvas"), maskImage = document.createEleme
 const view = { x: 0, y: 0, k: 1 };  // centre in metres, pixels per metre
 // Named landing sites sent by the STAMINA app: { id, name, color, x, y } in metres.
 let appSites = [];
+// Plain Moon base map from LOLA: hillshade (uint8) and elevation (int16 m, -32768 = no data).
+let base = null;
+// Colour range of the temperature image, shown as a legend next to the scale bar (null = plain Moon).
+let legend = null;
+const showTemperature = () => $("tempOn").checked;
 
 // ---------- geometry: south polar stereographic, sphere R ----------
 function toLatLon(x, y) {
@@ -288,7 +294,22 @@ function colorRange() {
   if (mode === "custom") return [+$("vmin").value, +$("vmax").value];
   return current.stat === "amplitude" ? [0, 300] : [20, 320];
 }
+function buildBaseImage() {
+  const n = meta.size;
+  image.width = image.height = n;
+  const ictx = image.getContext("2d"), img = ictx.createImageData(n, n), d = img.data;
+  for (let i = 0; i < n * n; i++) {
+    if (base.elev[i] === -32768) continue;  // transparent: no data
+    const v = base.shade[i];
+    d[4 * i] = v; d[4 * i + 1] = v; d[4 * i + 2] = v; d[4 * i + 3] = 255;
+  }
+  ictx.putImageData(img, 0, 0);
+  draw();
+}
 function buildImage() {
+  // The colorbar only applies to the temperature layer.
+  for (const id of ["colorbar", "tmin", "tmid", "tmax"]) $(id).style.visibility = showTemperature() ? "" : "hidden";
+  if (!showTemperature() && base) { legend = null; updateReadout(lastPointer); return buildBaseImage(); }
   const n = meta.size, grid = grids[keyId(current)], lut = meta.colormap;
   const [lo, hi] = colorRange(), span = hi - lo || 1;
   const thr = +$("threshold").value * meta.scale;
@@ -308,6 +329,8 @@ function buildImage() {
   }
   ictx.putImageData(img, 0, 0);
   drawColorbar(lo, hi);
+  legend = { lo, hi, title: `${keyName(current)}${current.stat === "amplitude" ? " (swing)" : ""} · K` };
+  updateReadout(lastPointer);
   draw();
 }
 function isEdge(grid, i, n, thr) {
@@ -390,9 +413,33 @@ function draw() {
   }
   drawScaleBar();
 }
+function drawCraterRims(s) {
+  for (const f of meta.features) {
+    const rpx = (f.diameterKm * 500) * view.k;
+    if (f.kind === "mons" || rpx < 5 * s) continue;
+    const p = toScreen(f.x, f.y);
+    ctx.beginPath(); ctx.arc(p.sx, p.sy, rpx, 0, 2 * Math.PI);
+    ctx.setLineDash([2 * s, 3 * s]); ctx.strokeStyle = "rgba(255, 255, 255, 0.55)"; ctx.lineWidth = 1 * s; ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
 function drawSites() {
   const s = dpr(), h = 12 * s;
-  ctx.font = `600 ${12 * s}px system-ui`; ctx.textAlign = "left"; ctx.lineJoin = "round";
+  // Reference craters first, so sites draw over them (inside the app only).
+  if ($("labels").checked && appSites.length > 0) drawCraterRims(s);
+  // Region outlines (official polygons, ~20 km wide), then the markers.
+  ctx.lineJoin = "round";
+  for (const site of appSites) {
+    if (!site.outline) continue;
+    const selected = site.id === pinned?.siteId;
+    ctx.beginPath();
+    site.outline.forEach((pt, i) => { const p = toScreen(pt.x, pt.y); i ? ctx.lineTo(p.sx, p.sy) : ctx.moveTo(p.sx, p.sy); });
+    ctx.closePath();
+    ctx.fillStyle = selected ? "rgba(0, 229, 255, 0.22)" : "rgba(255, 255, 255, 0.10)"; ctx.fill();
+    ctx.setLineDash([4 * s, 3 * s]);
+    ctx.strokeStyle = selected ? "#00e5ff" : "rgba(255, 255, 255, 0.9)"; ctx.lineWidth = 1.5 * s; ctx.stroke();
+    ctx.setLineDash([]);
+  }
   for (const site of appSites) {
     const p = toScreen(site.x, site.y);
     ctx.beginPath(); ctx.arc(p.sx, p.sy, 5.5 * s, 0, 2 * Math.PI);
@@ -406,20 +453,33 @@ function drawSites() {
     const p = toScreen(site.x, site.y);
     return { x0: p.sx - 6 * s, y0: p.sy - 6 * s, x1: p.sx + 6 * s, y1: p.sy + 6 * s };
   });
+  const fits = (box) => boxes.every((o) => box.x1 < o.x0 || box.x0 > o.x1 || box.y1 < o.y0 || box.y0 > o.y1);
   const order = [...appSites].sort((a, b) => (b.id === pinned?.siteId) - (a.id === pinned?.siteId));
+  ctx.font = `600 ${12 * s}px system-ui`; ctx.textAlign = "left";
   for (const site of order) {
     const p = toScreen(site.x, site.y), w = ctx.measureText(site.name).width;
     const candidates = [
       [p.sx + 9 * s, p.sy - h / 2], [p.sx - 9 * s - w, p.sy - h / 2],
       [p.sx - w / 2, p.sy - 9 * s - h], [p.sx - w / 2, p.sy + 9 * s],
     ];
-    const free = candidates.map(([x, y]) => ({ x0: x - 2 * s, y0: y - 2 * s, x1: x + w + 2 * s, y1: y + h + 2 * s }))
-      .find((box) => boxes.every((o) => box.x1 < o.x0 || box.x0 > o.x1 || box.y1 < o.y0 || box.y0 > o.y1));
+    const free = candidates.map(([x, y]) => ({ x0: x - 2 * s, y0: y - 2 * s, x1: x + w + 2 * s, y1: y + h + 2 * s })).find(fits);
     if (!free) continue;
     boxes.push(free);
-    const x = free.x0 + 2 * s, y = free.y0 + 2 * s + h - 2 * s;
+    const x = free.x0 + 2 * s, y = free.y0 + h;
     ctx.strokeStyle = "#000"; ctx.lineWidth = 3 * s; ctx.strokeText(site.name, x, y);
     ctx.fillStyle = "#fff"; ctx.fillText(site.name, x, y);
+  }
+  // Reference crater names (IAU), centred on the crater where there is room.
+  // Only inside the app, next to the sites.
+  if (!$("labels").checked || appSites.length === 0) return;
+  ctx.font = `italic ${11 * s}px system-ui`;
+  for (const f of meta.features) {
+    const p = toScreen(f.x, f.y), w = ctx.measureText(f.name).width;
+    const box = { x0: p.sx - w / 2 - 2 * s, y0: p.sy - h / 2 - 2 * s, x1: p.sx + w / 2 + 2 * s, y1: p.sy + h / 2 + 2 * s };
+    if (!fits(box)) continue;
+    boxes.push(box);
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.7)"; ctx.lineWidth = 3 * s; ctx.strokeText(f.name, box.x0 + 2 * s, box.y0 + h);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; ctx.fillText(f.name, box.x0 + 2 * s, box.y0 + h);
   }
 }
 function siteNear(sx, sy) {
@@ -429,27 +489,61 @@ function siteNear(sx, sy) {
     return Math.hypot(p.sx - sx, p.sy - sy) <= 10 * s;
   });
 }
+// Bottom-right corner: scale bar, and the colour legend of the temperature layer next to it.
 function drawScaleBar() {
-  const s = dpr(), target = 120 * s / view.k;  // metres in ~120 css px
+  const s = dpr(), W = canvas.width, H = canvas.height, target = 120 * s / view.k;  // metres in ~120 css px
   const mag = 10 ** Math.floor(Math.log10(target));
   const len = [5, 2, 1].map((m) => m * mag).find((m) => m <= target);
-  const x = canvas.width - 24 * s - len * view.k, y = canvas.height - 24 * s;
-  ctx.fillStyle = "#e6e8eb"; ctx.fillRect(x, y, len * view.k, 3 * s);
-  ctx.font = `${11 * s}px system-ui`; ctx.textAlign = "center";
-  ctx.fillText(len >= 1000 ? `${len / 1000} km` : `${len} m`, x + len * view.k / 2, y - 6 * s);
+  const barW = len * view.k, x = W - 24 * s - barW, y = H - 24 * s;
+  const legendW = 170 * s, lx = x - 24 * s - legendW;
+
+  ctx.fillStyle = "rgba(20, 20, 22, 0.72)";
+  ctx.beginPath();
+  ctx.roundRect(legend ? lx - 10 * s : x - 10 * s, H - 52 * s, W - (legend ? lx : x) + 10 * s - 12 * s, 46 * s, 8 * s);
+  ctx.fill();
+
+  ctx.fillStyle = "#e6e8eb"; ctx.fillRect(x, y, barW, 3 * s);
+  ctx.font = `${11 * s}px system-ui`; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  ctx.fillText(len >= 1000 ? `${len / 1000} km` : `${len} m`, x + barW / 2, y - 6 * s);
+  if (legend) drawLegend(lx, H - 32 * s, legendW, s);
+}
+function drawLegend(x, y, w, s) {
+  const { lo, hi, title } = legend, h = 8 * s;
+  const gradient = ctx.createLinearGradient(x, 0, x + w, 0);
+  meta.colormap.forEach(([r, g, b], i) => { if (i % 15 === 0 || i === 255) gradient.addColorStop(i / 255, `rgb(${r},${g},${b})`); });
+  ctx.fillStyle = gradient; ctx.fillRect(x, y, w, h);
+  // Ice stability threshold, when it falls inside the range
+  const thr = +$("threshold").value;
+  if (current.stat !== "amplitude" && thr > lo && thr < hi) {
+    const tx = x + ((thr - lo) / (hi - lo)) * w;
+    ctx.fillStyle = "#00e5ff"; ctx.fillRect(tx - s, y - 3 * s, 2 * s, h + 6 * s);
+  }
+  ctx.fillStyle = "#e6e8eb"; ctx.font = `${10 * s}px system-ui`;
+  ctx.textAlign = "left"; ctx.fillText(title, x, y - 5 * s);
+  ctx.fillText(lo.toFixed(0), x, y + h + 11 * s);
+  ctx.textAlign = "right"; ctx.fillText(hi.toFixed(0), x + w, y + h + 11 * s);
+  ctx.textAlign = "center"; ctx.fillText(((lo + hi) / 2).toFixed(0), x + w / 2, y + h + 11 * s);
 }
 
 // ---------- readout and pinned point ----------
 const fmtPos = ({ lat, lon }, x, y) =>
   `${Math.abs(lat).toFixed(3)}°S, ${Math.abs(lon).toFixed(2)}°${lon >= 0 ? "E" : "W"}  ·  x ${(x / 1000).toFixed(1)} km, y ${(y / 1000).toFixed(1)} km`;
 
+let lastPointer = null;  // last mouse event over the map, to refresh the readout on layer changes
 function updateReadout(ev) {
+  if (!ev) return;
+  lastPointer = ev;
   const w = toWorld(ev.offsetX * dpr(), ev.offsetY * dpr());
   if (Math.hypot(w.x, w.y) > meta.radiusM) { $("rT").textContent = "–"; $("rPos").textContent = "Outside the 80°S cap"; return; }
-  const v = valueAt(grids[keyId(current)], w.x, w.y);
-  $("rT").textContent = v === null ? "no data" : current.stat === "amplitude"
-    ? `${v.toFixed(1)} K swing · ${keyName(current)}`
-    : `${v.toFixed(1)} K (${(v - 273.15).toFixed(0)} °C) · ${keyName(current)}`;
+  if (!showTemperature() && base) {
+    const e = base.elev[pixelIndex(w.x, w.y)];
+    $("rT").textContent = e === undefined || e === -32768 ? "no data" : `${e.toLocaleString("en")} m · elevation`;
+  } else {
+    const v = valueAt(grids[keyId(current)], w.x, w.y);
+    $("rT").textContent = v === null ? "no data" : current.stat === "amplitude"
+      ? `${v.toFixed(1)} K swing · ${keyName(current)}`
+      : `${v.toFixed(1)} K (${(v - 273.15).toFixed(0)} °C) · ${keyName(current)}`;
+  }
   let pos = fmtPos(toLatLon(w.x, w.y), w.x, w.y);
   const site = siteNear(ev.offsetX * dpr(), ev.offsetY * dpr());
   if (site) pos = `${site.name}  ·  ${pos}`;
@@ -466,7 +560,9 @@ async function pin(x, y, siteId = null) {
     for (const [stat] of STATS) temperatures[column][stat] = valueAt(await getGrid({ seasons, stat }), x, y);
   }
   // Inside the STAMINA app the click selects the landing site there.
-  postToApp({ type: "stamina:site-selected", latitude: lat, longitude: lon, temperatures, siteId });
+  const elevation = base?.elev[pixelIndex(x, y)];
+  const elevationM = elevation === undefined || elevation === -32768 ? null : elevation;
+  postToApp({ type: "stamina:site-selected", latitude: lat, longitude: lon, temperatures, elevationM, siteId });
   $("pinned").style.display = "block";
   $("pPos").textContent = fmtPos({ lat, lon }, x, y);
   const rows = [`<tr><th></th><th>Summer</th><th>Winter</th><th>Annual</th></tr>`];
@@ -531,7 +627,7 @@ function scheduleSelection() {
   requestAnimationFrame(() => { selectionQueued = false; updateSelection(); });
 }
 async function updateSelection() {
-  if (!$("selOn").checked || conditions.length === 0) {
+  if (!showTemperature() || !$("selOn").checked || conditions.length === 0) {
     selMask = null; $("selStats").textContent = ""; draw();
     postToApp({ type: "stamina:selection-stats", stats: null });
     return;
@@ -578,6 +674,7 @@ function postToApp(message) {
 // The app's Temperature filter: layer, ice threshold, and a selection that keeps pixels
 // whose layer value AND seasonal amplitude are inside the given ranges.
 async function applyAppConfig(config) {
+  $("tempOn").checked = config.enabled;
   current.seasons = [config.season];
   current.stat = config.statistic;
   $("threshold").value = config.iceStabilityThresholdK;
@@ -596,7 +693,10 @@ window.addEventListener("message", (event) => {
   const data = event.data;
   if (data?.type === "stamina:temperature-config") applyAppConfig(data.config);
   if (data?.type === "stamina:sites") {
-    appSites = data.sites.map((site) => ({ ...site, ...toXY(site.latitude, site.longitude) }));
+    appSites = data.sites.map((site) => ({
+      ...site, ...toXY(site.latitude, site.longitude),
+      outline: site.region?.map(([lat, lon]) => toXY(lat, lon)),
+    }));
     draw();
   }
   if (data?.type === "stamina:focus-site") {
@@ -676,6 +776,7 @@ $("rangeMode").onchange = () => {
   buildImage();
 };
 for (const id of ["vmin", "vmax", "outline"]) $(id).onchange = buildImage;
+$("tempOn").onchange = () => { buildImage(); updateSelection(); };
 $("threshold").oninput = () => { $("thresholdValue").textContent = `${$("threshold").value} K`; buildImage(); };
 for (const id of ["grid", "labels"]) $(id).onchange = draw;
 $("selOn").onchange = () => {
@@ -699,6 +800,14 @@ window.addEventListener("resize", resize);
   bindKeyControls($("layerKey"), current, showCurrentLayer);
   $("threshold").value = meta.iceThresholdK;
   $("thresholdValue").textContent = `${meta.iceThresholdK} K`;
+  if (meta.base) {
+    const [shade, elev] = await Promise.all([meta.base.hillshade, meta.base.elevation]
+      .map(async (file) => (await fetch(`data/${file}`)).arrayBuffer()));
+    base = { shade: new Uint8Array(shade), elev: new Int16Array(elev) };
+  }
+  // Inside the app the plain Moon is the default; the app turns temperature on.
+  // Inside the app each layer gets its own colour range, so the legend follows Avg/Min/Max/Amplitude.
+  if (EMBED) { $("tempOn").checked = false; $("rangeMode").value = "layer"; }
   resize(); resetView();
   await showCurrentLayer();
   postToApp({ type: "stamina:viewer-ready" });

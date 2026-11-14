@@ -46,6 +46,8 @@ export type LunarSite = {
   latitude?: number;
   longitude?: number;
   temperatures?: SiteTemperatures;
+  // LOLA elevation relative to 1737.4 km, from the map.
+  elevationM?: number | null;
   // Set when the site is one of the named landing sites.
   details?: LandingSite;
 };

@@ -4,7 +4,6 @@ import { useState } from "react";
 import FilterPanel from "./FilterPanel";
 import MapPanel from "./MapPanel";
 import AdvancedFilters from "./AdvancedFilters";
-import SiteList from "./SiteList";
 
 import { createInitialFilters } from "../../filters/filterRegistry";
 import { analyzeLunarSite } from "../../services/scientificApi";
@@ -267,6 +266,7 @@ export default function LunarExplorer() {
             selectedSite={selectedSite}
             filters={filters}
             onSiteSelect={changeSite}
+            onLandingSiteSelect={selectLandingSite}
             temperature={temperature}
             onTemperatureSelection={setTemperatureSelection}
           />
@@ -312,12 +312,6 @@ export default function LunarExplorer() {
 
         </div>
 
-        {/* NAMED LANDING SITES */}
-        <SiteList
-          selectedId={selectedSite?.details?.id ?? null}
-          onSelect={selectLandingSite}
-        />
-
         {/* SELECTED LANDING SITE */}
         <div className="explorer-selected-site">
 
@@ -333,6 +327,8 @@ export default function LunarExplorer() {
               Lat: {selectedSite.latitude?.toFixed(4)}°
               {" / "}
               Lon: {selectedSite.longitude?.toFixed(4)}°
+              {selectedSite.elevationM != null &&
+                ` · Elevation: ${selectedSite.elevationM.toLocaleString("en")} m`}
             </small>
           )}
 
@@ -375,7 +371,7 @@ export default function LunarExplorer() {
               </tbody>
             </table>
 
-            <p className="explorer-data-note">
+            <p className="explorer-data-note explorer-secondary">
               Diviner season summaries (Williams et al. 2019).
               Water ice is stable where the annual maximum
               stays below 110 K.
@@ -446,11 +442,9 @@ export default function LunarExplorer() {
           <h3>Active Filters</h3>
 
           <p className="explorer-data-note">
-            Standard filters: {activeFilterCount}
-          </p>
-
-          <p className="explorer-data-note">
-            Custom filters: {activeCustomFilterCount}
+            Standard: {activeFilterCount}
+            {" · "}
+            Custom: {activeCustomFilterCount}
           </p>
 
           {activeCustomFilterCount > 0 && (

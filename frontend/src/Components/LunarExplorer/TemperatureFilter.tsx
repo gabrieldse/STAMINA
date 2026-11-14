@@ -1,5 +1,6 @@
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import type { PointerEvent } from "react";
 
 import {
   KELVIN_SLIDER,
@@ -23,12 +24,13 @@ type Props = {
 
 // Data products not wired in yet (Diviner PCP time slices, SPICE).
 const TODO_LAYERS = [
-  "Diurnal cycle by local time (PCP)",
-  "Seasonal Ls bins (PCP)",
-  "Mission window from SPICE ephemeris",
+  "Diurnal cycle (PCP)",
+  "Ls bins (PCP)",
+  "Mission window (SPICE)",
 ];
 
-// Two thumbs on one track; the interval between them is highlighted.
+// Two thumbs on one track; the interval between them is highlighted and can
+// be dragged to move both ends together.
 function RangeSlider({
   label,
   range,
@@ -42,6 +44,34 @@ function RangeSlider({
   const left = (100 * (range.min - KELVIN_SLIDER.min)) / span;
   const right = (100 * (range.max - KELVIN_SLIDER.min)) / span;
 
+  const trackRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ x: number; range: KelvinRange } | null>(null);
+
+  function startDrag(e: PointerEvent<HTMLDivElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragRef.current = { x: e.clientX, range };
+  }
+
+  function drag(e: PointerEvent<HTMLDivElement>) {
+    const start = dragRef.current;
+    const track = trackRef.current;
+    if (!start || !track) return;
+
+    const width = start.range.max - start.range.min;
+    const shift = ((e.clientX - start.x) / track.clientWidth) * span;
+    const min = Math.round(
+      Math.min(
+        Math.max(start.range.min + shift, KELVIN_SLIDER.min),
+        KELVIN_SLIDER.max - width
+      )
+    );
+    onChange({ min, max: min + width });
+  }
+
+  function endDrag() {
+    dragRef.current = null;
+  }
+
   return (
     <div className="temperature-range">
       <div className="temperature-range-heading">
@@ -49,11 +79,16 @@ function RangeSlider({
         <strong>{range.min}–{range.max} K</strong>
       </div>
 
-      <div className="temperature-dual">
+      <div className="temperature-dual" ref={trackRef}>
         <div className="temperature-dual-track" />
         <div
           className="temperature-dual-fill"
           style={{ left: `${left}%`, width: `${right - left}%` }}
+          title="Drag to move the whole interval"
+          onPointerDown={startDrag}
+          onPointerMove={drag}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
         />
 
         {/* The thumbs can't cross: each stops at the other. */}
@@ -94,7 +129,6 @@ export default function TemperatureFilter({
   onChange,
   selectionStats,
 }: Props) {
-  const [isOpen, setIsOpen] = useState(true);
   const [isLayerOpen, setIsLayerOpen] = useState(true);
 
   function update(changes: Partial<TemperatureConfig>) {
@@ -104,20 +138,19 @@ export default function TemperatureFilter({
   return (
     <div className="filter-item temperature-filter">
 
-      {/* SECTION HEADER */}
-      <button
-        type="button"
-        className="temperature-fold"
-        onClick={() => setIsOpen(!isOpen)}
-        aria-expanded={isOpen}
-      >
+      {/* SECTION HEADER: off shows the plain Moon (LOLA relief) */}
+      <label className="filter-heading">
+        <input
+          type="checkbox"
+          checked={config.enabled}
+          onChange={(e) => update({ enabled: e.target.checked })}
+        />
         <strong>Temperature</strong>
-        <span>{isOpen ? "−" : "+"}</span>
-      </button>
+      </label>
 
-      <small>Diviner surface temperature, 80°S to the pole</small>
+      <small>Diviner surface temperature layer, 80°S to the pole</small>
 
-      {isOpen && (
+      {config.enabled && (
         <div className="temperature-content">
 
           {/* LAYER SHOWN ON THE MAP */}
@@ -172,13 +205,9 @@ export default function TemperatureFilter({
                 ))}
               </div>
 
-              <ul className="temperature-todo">
-                {TODO_LAYERS.map((layer) => (
-                  <li key={layer}>
-                    <span>[todo]</span> {layer}
-                  </li>
-                ))}
-              </ul>
+              <p className="temperature-todo">
+                <span>[todo]</span> {TODO_LAYERS.join(" · ")}
+              </p>
             </div>
           )}
 

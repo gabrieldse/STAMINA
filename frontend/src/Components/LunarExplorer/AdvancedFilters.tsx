@@ -37,6 +37,7 @@ function buildConfiguration(
     version: 1,
     exportedAt: new Date().toISOString(),
     southPoleTemperatures: {
+      enabled: temperature.enabled,
       layer: {
         season: temperature.season,
         statistic: temperature.statistic,
