@@ -107,8 +107,7 @@
   overflow: hidden;
 }
 
-.map-header,
-.map-footer {
+.map-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -116,8 +115,7 @@
   padding: 15px 20px;
 }
 
-.map-header span,
-.map-footer {
+.map-header span {
   color: #b6b6b6;
   font-size: 12px;
 }
@@ -329,39 +327,6 @@
   background: #252525;
 }
 
-.explorer-map-toolbar {
-  flex-shrink: 0;
-  min-height: 58px;
-
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-
-  padding: 12px 20px;
-  background: #2d2d2d;
-  border-bottom: 1px solid #535353;
-}
-
-.explorer-map-toolbar > div {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.explorer-map-toolbar strong {
-  font-size: 14px;
-}
-
-.explorer-map-toolbar span {
-  color: #a0a0a0;
-  font-size: 11px;
-}
-
-.explorer-map-context {
-  text-align: right;
-}
-
 .explorer-map-area {
   flex: 1;
   display: flex;
@@ -391,8 +356,7 @@
   min-height: 0;
 }
 
-.explorer-map-area .map-header,
-.explorer-map-area .map-footer {
+.explorer-map-area .map-header {
   flex-shrink: 0;
 }
 
@@ -609,7 +573,7 @@
 .map-workspace-embed {
   display: block;
   padding: 0;
-  background: #2f2f2f;
+  background: #000;
 }
 
 .lunar-map-frame {
@@ -823,4 +787,61 @@
   .explorer-left-panel .temperature-segmented span {
     padding: 4px 2px;
   }
+}
+
+/* FOLDABLE SITE INSPECTOR (right panel) */
+
+.inspector-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 8px 16px;
+  border: 0;
+  border-bottom: 1px solid #535353;
+  background: none;
+  color: #b6b6b6;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.inspector-toggle span:last-child {
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.inspector-toggle:hover {
+  background: #3a3a3a;
+}
+
+.lunar-explorer.inspector-collapsed {
+  grid-template-columns: 290px minmax(0, 1fr) 36px;
+}
+
+@media (max-width: 1150px) {
+  .lunar-explorer.inspector-collapsed {
+    grid-template-columns: 240px minmax(0, 1fr) 36px;
+  }
+}
+
+/* Folded: only the toggle, as a vertical tab */
+.inspector-collapsed .explorer-right-panel > :not(.inspector-toggle) {
+  display: none;
+}
+
+.inspector-collapsed .inspector-toggle {
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  gap: 10px;
+  height: 100%;
+  padding: 12px 0;
+  border-bottom: 0;
+}
+
+.inspector-collapsed .inspector-toggle span:first-child {
+  writing-mode: vertical-rl;
 }

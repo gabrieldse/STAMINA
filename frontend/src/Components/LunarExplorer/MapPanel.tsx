@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type {
-  FilterStates,
   LunarSite,
   SiteTemperatures,
 } from "../../types/explorer";
@@ -20,7 +19,6 @@ import type { SiteGroup } from "./SiteList";
 
 type Props = {
   selectedSite: LunarSite | null;
-  filters: FilterStates;
   onSiteSelect: (site: LunarSite) => void;
   onSiteClear: () => void;
   temperature: TemperatureConfig;
@@ -90,7 +88,6 @@ function isViewerMessage(data: unknown): data is ViewerMessage {
 
 export default function MapPanel({
   selectedSite,
-  filters,
   onSiteSelect,
   onSiteClear,
   temperature,
@@ -250,10 +247,6 @@ export default function MapPanel({
     },
   ];
 
-  const activeFilters = Object.entries(filters)
-    .filter(([, state]) => state.enabled)
-    .map(([id]) => id);
-
   return (
     <section className="explorer-map">
       <div className="map-header">
@@ -288,16 +281,6 @@ export default function MapPanel({
             onClose={() => setClosedInfoId(infoSite.id)}
           />
         )}
-      </div>
-
-      <div className="map-footer">
-        <span>
-          Selected: {selectedSite?.name ?? "None (click the map)"}
-        </span>
-
-        <span>
-          {activeFilters.length} active filters
-        </span>
       </div>
     </section>
   );

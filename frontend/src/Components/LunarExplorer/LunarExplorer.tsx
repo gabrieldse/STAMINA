@@ -49,6 +49,9 @@ export default function LunarExplorer() {
   const [selectedSite, setSelectedSite] =
     useState<LunarSite | null>(null);
 
+  // Right panel (site inspector) folded to a thin strip
+  const [inspectorOpen, setInspectorOpen] = useState(true);
+
   // Standard filters
   const [filters, setFilters] =
     useState<FilterStates>(createInitialFilters);
@@ -195,7 +198,12 @@ export default function LunarExplorer() {
   }
 
   return (
-    <main className="lunar-explorer">
+    <main
+      className={
+        "lunar-explorer" +
+        (inspectorOpen ? "" : " inspector-collapsed")
+      }
+    >
 
       {/* =====================================
           LEFT SIDEBAR — FILTERS
@@ -238,27 +246,10 @@ export default function LunarExplorer() {
       ===================================== */}
       <section className="explorer-center-panel">
 
-        {/* MAP TOOLBAR */}
-        <div className="explorer-map-toolbar">
-
-          <div>
-            <strong>Lunar Surface Explorer</strong>
-            <span>South Pole Region</span>
-          </div>
-
-          <span className="explorer-map-context">
-            {selectedSite
-              ? `Selected: ${selectedSite.name}`
-              : "No site selected"}
-          </span>
-
-        </div>
-
         {/* INTERACTIVE MAP */}
         <div className="explorer-map-area">
           <MapPanel
             selectedSite={selectedSite}
-            filters={filters}
             onSiteSelect={changeSite}
             onSiteClear={clearSite}
             temperature={temperature}
@@ -289,6 +280,18 @@ export default function LunarExplorer() {
           RIGHT SIDEBAR — SCIENTIFIC ANALYSIS
       ===================================== */}
       <aside className="explorer-right-panel">
+
+        {/* FOLD / UNFOLD THE PANEL */}
+        <button
+          type="button"
+          className="inspector-toggle"
+          onClick={() => setInspectorOpen(!inspectorOpen)}
+          aria-expanded={inspectorOpen}
+          title={inspectorOpen ? "Hide the site inspector" : "Show the site inspector"}
+        >
+          <span>Site inspector</span>
+          <span aria-hidden="true">{inspectorOpen ? "›" : "‹"}</span>
+        </button>
 
         {/* PANEL HEADER */}
         <div className="explorer-inspector-heading">
