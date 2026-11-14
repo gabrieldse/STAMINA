@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Carte lunaire – NASA Space Apps Challenge</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app" id="app">
+  <header>
+    <div class="logos" id="logos"></div>
+    <button id="settings" title="Paramètres">⚙</button>
+  </header>
+
+  <div class="stage">
+    <div class="map-viewport">
+      <div class="map" id="map">
+        <img id="mapImg" alt="Carte de la Lune" draggable="false" hidden>
+        <div class="map-empty" id="mapEmpty">
+          <span>Carte introuvable : vérifie <code>CONFIG.map</code> dans le code</span>
+        </div>
+        <img id="overlay" alt="Calque importé" hidden>
+        <div id="sun"></div>
+        <div id="earth"></div>
+      </div>
+    </div>
+
+    <aside class="menu" id="menu">
+      <h3>Mission</h3>
+      <div class="list" id="missions"></div>
+      <h3>Others</h3>
+      <div class="list">
+        <div class="tools">
+          <div class="tools-title">Placer les points</div>
+          <select id="placeSel"></select>
+          <button class="btn" id="placeToggle">Mode placement : OFF</button>
+          <small>Clique sur la carte pour ajouter un point, glisse un point pour le déplacer, double-clic dessus pour le supprimer.</small>
+          <div class="row"><button id="exportBtn">Exporter</button><button id="resetBtn">Réinitialiser</button></div>
+          <textarea id="exportBox" rows="4" readonly hidden></textarea>
+        </div>
+
+        <button class="btn" id="importBtn">Importer un calque</button>
+        <input type="file" id="fileInput" accept="image/*" hidden>
+        <div class="tools" id="ovTools" hidden>
+          <div class="ov-name" id="ovName"></div>
+          <label>Opacité <input type="range" id="ovOpacity" min="0" max="100" value="60"></label>
+          <div class="row"><button id="ovToggle">Masquer</button><button id="ovRemove">Retirer</button></div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="menu-head">
+      <span class="menu-label">Menu</span>
+      <button id="menuBtn" aria-label="Ouvrir / fermer le menu">☰</button>
+    </div>
+
+    <section class="info" id="info" hidden aria-live="polite">
+      <button class="info-close" id="infoClose" aria-label="Fermer">×</button>
+      <div class="info-title"><i id="infoDot"></i><h2 id="infoName"></h2></div>
+      <div class="info-sub" id="infoSub"></div>
+      <dl class="info-facts" id="infoFacts"></dl>
+      <h4>Ce qu’il s’est passé</h4>
+      <p id="infoStory"></p>
+    </section>
+
+    <div class="bar">
+      <button class="pill" id="clock">--</button>
+      <div class="zoom">
+        <button class="pill" id="zin" title="Zoom numérique">+</button>
+        <button class="pill" id="zout" title="Zoom numérique">-</button>
+      </div>
+      <div class="spacer"></div>
+      <div class="right">
+        <button class="pill" id="sunBtn" title="Enable/Disable : affiche les zones d’ensoleillement">Sun Position</button>
+        <button class="pill" id="earthBtn" title="Enable/Disable : affiche la position de la Terre par rapport à l’horizon">Earth Position</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+
+</body>
+</html>
