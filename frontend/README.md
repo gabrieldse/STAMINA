@@ -1,5 +1,18 @@
 # React + TypeScript + Vite
 
+## Lunar map data
+
+The Lunar South Pole map (`public/lunar-map/`) needs its temperature grids,
+which are generated and not committed. From the repository root, once:
+
+```bash
+uv run lola_2d/diviner_web.py --no-serve   # downloads ~210 MB from Moon Trek once, writes ~16 MB of grids
+```
+
+Then `npm run dev` as usual. The viewer also runs on its own with
+`uv run lola_2d/diviner_web.py` (http://localhost:8000).
+
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

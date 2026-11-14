@@ -1,7 +1,9 @@
+import { useEffect } from "react";
 
 import type {
   FilterStates,
   LunarSite,
+  SiteTemperatures,
 } from "../../types/explorer";
 
 type Props = {
@@ -10,17 +12,53 @@ type Props = {
   onSiteSelect: (site: LunarSite) => void;
 };
 
+// Message posted by the lunar map viewer (public/lunar-map) when a point is clicked.
+type SiteSelectedMessage = {
+  type: "stamina:site-selected";
+  latitude: number;
+  longitude: number;
+  temperatures: SiteTemperatures;
+};
+
+function isSiteSelectedMessage(data: unknown): data is SiteSelectedMessage {
+  const message = data as SiteSelectedMessage | null;
+  return (
+    message?.type === "stamina:site-selected" &&
+    Number.isFinite(message.latitude) &&
+    Number.isFinite(message.longitude)
+  );
+}
+
+function formatCoordinates(latitude: number, longitude: number) {
+  const lat = `${Math.abs(latitude).toFixed(3)}°${latitude < 0 ? "S" : "N"}`;
+  const lon = `${Math.abs(longitude).toFixed(2)}°${longitude < 0 ? "W" : "E"}`;
+  return `${lat}, ${lon}`;
+}
+
 export default function MapPanel({
   selectedSite,
   filters,
   onSiteSelect,
 }: Props) {
-  // Temporary test sites, not georeferenced.
-  const testSites: LunarSite[] = [
-    { id: "alpha", name: "Site Alpha" },
-    { id: "beta", name: "Site Beta" },
-    { id: "gamma", name: "Site Gamma" },
-  ];
+  // Clicking the map selects that point as the landing site.
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin) return;
+      if (!isSiteSelectedMessage(event.data)) return;
+
+      const { latitude, longitude, temperatures } = event.data;
+      onSiteSelect({
+        id: `map-${latitude.toFixed(4)}-${longitude.toFixed(4)}`,
+        name: `Map point ${formatCoordinates(latitude, longitude)}`,
+        latitude,
+        longitude,
+        temperatures,
+      });
+    }
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [onSiteSelect]);
 
   const activeFilters = Object.entries(filters)
     .filter(([, state]) => state.enabled)
@@ -30,46 +68,20 @@ export default function MapPanel({
     <section className="explorer-map">
       <div className="map-header">
         <strong>Lunar South Pole</strong>
-        <span>Map integration pending</span>
+        <span>Diviner surface temperature · 80°S to the pole</span>
       </div>
 
-      <div className="map-workspace">
-        <div className="map-empty-content">
-          <span className="map-placeholder-icon">☾</span>
-
-          <h2>Interactive Lunar Map</h2>
-
-          <p>
-            Gabriel's lunar map will be mounted here.
-          </p>
-
-          <small>
-            The site buttons below are temporary
-            integration controls, not map coordinates.
-          </small>
-
-          <div className="map-test-sites">
-            {testSites.map((site) => (
-              <button
-                key={site.id}
-                type="button"
-                className={
-                  selectedSite?.id === site.id
-                    ? "active"
-                    : ""
-                }
-                onClick={() => onSiteSelect(site)}
-              >
-                {site.name}
-              </button>
-            ))}
-          </div>
-        </div>
+      <div className="map-workspace map-workspace-embed">
+        <iframe
+          className="lunar-map-frame"
+          src="/lunar-map/index.html?embed=1"
+          title="Lunar south pole surface temperature map"
+        />
       </div>
 
       <div className="map-footer">
         <span>
-          Selected: {selectedSite?.name ?? "None"}
+          Selected: {selectedSite?.name ?? "None (click the map)"}
         </span>
 
         <span>

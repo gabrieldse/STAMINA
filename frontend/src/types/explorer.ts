@@ -31,11 +31,19 @@ export type FilterState = {
 
 export type FilterStates = Record<string, FilterState>;
 
+// Diviner surface temperature at a site, in kelvin (null = no data), per season
+// ("annual" combines both) and statistic. Comes from the lunar map viewer.
+export type SiteTemperatures = Record<
+  "summer" | "winter" | "annual",
+  Record<"avg" | "min" | "max" | "amplitude", number | null>
+>;
+
 export type LunarSite = {
   id: string;
   name: string;
   latitude?: number;
   longitude?: number;
+  temperatures?: SiteTemperatures;
 };
 
 export type ScientificResult = {

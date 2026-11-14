@@ -5,11 +5,12 @@
 """Build and serve the interactive Diviner south polar temperature viewer.
 
 Exports every Moon Trek Diviner season summary (see diviner_maps.py) as a small
-binary grid for web/index.html, then serves the folder locally:
+binary grid for the viewer in frontend/public/lunar-map/, which the React app
+embeds in its Lunar South Pole map. The viewer also runs on its own:
 
     uv run diviner_web.py                 # build (1024 px grids) and serve on :8000
     uv run diviner_web.py --size 2048     # finer grids (4x the data)
-    uv run diviner_web.py --no-serve      # only build web/data/
+    uv run diviner_web.py --no-serve      # only build the data, e.g. before `npm run dev`
 
 Each grid is uint16 little-endian, kelvin x 100, 0 = no data.
 """
@@ -27,7 +28,7 @@ from diviner_maps import ICE_THRESHOLD_K, LAT_LIMIT, LAYERS, read_layer
 from south_pole import FEATURES, latlon_to_xy, stereo_radius
 
 SCALE = 100  # stored value = kelvin * SCALE
-WEB_DIR = Path(__file__).parent / "web"
+WEB_DIR = Path(__file__).resolve().parent.parent / "frontend" / "public" / "lunar-map"
 
 
 def build(size: int) -> None:

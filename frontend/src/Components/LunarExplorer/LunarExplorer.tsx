@@ -20,6 +20,22 @@ import type {
 
 import "./LunarExplorer.css";
 
+// Rows and columns of the surface temperature table
+const TEMPERATURE_STATS = [
+  ["avg", "Average"],
+  ["min", "Minimum"],
+  ["max", "Maximum"],
+  ["amplitude", "Amplitude"],
+] as const;
+
+const TEMPERATURE_SEASONS = ["summer", "winter", "annual"] as const;
+
+function formatKelvin(value: number | null | undefined) {
+  return value != null && Number.isFinite(value)
+    ? value.toFixed(1)
+    : "—";
+}
+
 export default function LunarExplorer() {
   // Selected lunar landing site
   const [selectedSite, setSelectedSite] =
@@ -287,6 +303,46 @@ export default function LunarExplorer() {
           )}
 
         </div>
+
+        {/* SURFACE TEMPERATURE (from the lunar map) */}
+        {selectedSite?.temperatures && (
+          <div className="explorer-inspector-section">
+
+            <h3>Surface Temperature</h3>
+
+            <table className="explorer-temperature-table">
+              <thead>
+                <tr>
+                  <th>Kelvin</th>
+                  <th>Summer</th>
+                  <th>Winter</th>
+                  <th>Annual</th>
+                </tr>
+              </thead>
+              <tbody>
+                {TEMPERATURE_STATS.map(([stat, label]) => (
+                  <tr key={stat}>
+                    <td>{label}</td>
+                    {TEMPERATURE_SEASONS.map((season) => (
+                      <td key={season}>
+                        {formatKelvin(
+                          selectedSite.temperatures?.[season][stat]
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <p className="explorer-data-note">
+              Diviner season summaries (Williams et al. 2019).
+              Water ice is stable where the annual maximum
+              stays below 110 K.
+            </p>
+
+          </div>
+        )}
 
         {/* MISSION PARAMETERS */}
         <div className="explorer-inspector-section">

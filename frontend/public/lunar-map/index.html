@@ -77,6 +77,13 @@
   details { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 8px; }
   summary { cursor: pointer; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
   .hint { color: var(--muted); font-size: 11px; margin-top: 10px; }
+  .title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  #controls.collapsed #controlsBody { display: none; }
+  /* Embedded in the STAMINA app (?embed=1): narrower panels; the app shows the pinned values. */
+  body.embed #controls { width: 250px; padding: 10px 12px; max-height: calc(100% - 90px); }
+  body.embed #readout { min-width: 0; max-width: calc(100% - 24px); padding: 8px 10px; }
+  body.embed #readout .t { font-size: 15px; }
+  body.embed #pinned { display: none !important; }
 
   #readout { bottom: 12px; left: 12px; min-width: 300px; font-variant-numeric: tabular-nums; }
   #readout .t { font-size: 20px; font-weight: 600; }
@@ -99,7 +106,11 @@
 <div id="status">Loading…</div>
 
 <div class="panel" id="controls">
-  <h1>Lunar south pole temperatures</h1>
+  <div class="title-row">
+    <h1>Lunar south pole temperatures</h1>
+    <button class="icon-btn" id="collapse" aria-expanded="true" aria-controls="controlsBody" title="Collapse controls">▴</button>
+  </div>
+  <div id="controlsBody">
   <div class="sub" id="source"></div>
 
   <span class="label">Layer</span>
@@ -147,6 +158,7 @@
   </details>
 
   <div class="hint">Scroll to zoom, drag to pan, click a point to compare all layers, double-click to reset.</div>
+  </div>
 </div>
 
 <div class="panel" id="readout">
@@ -167,6 +179,8 @@ const canvas = $("map"), ctx = canvas.getContext("2d");
 const SEASONS = [["summer", "Summer"], ["winter", "Winter"]];
 const STATS = [["avg", "Avg"], ["min", "Min"], ["max", "Max"], ["amplitude", "Amplitude"]];
 const RANGE_MIN = 0, RANGE_MAX = 450;  // kelvin, interval slider limits
+const EMBED = new URLSearchParams(location.search).has("embed");
+document.body.classList.toggle("embed", EMBED);
 let meta, pinned = null;
 const grids = {};       // id -> Uint16Array (kelvin * scale, 0 = no data)
 const statsCache = {};  // id -> [p0.1, p99.9]
@@ -397,14 +411,25 @@ function updateReadout(ev) {
   if (selMask) pos += selMask[pixelIndex(w.x, w.y)] ? "  ·  inside selection" : "  ·  outside selection";
   $("rPos").textContent = pos;
 }
+const COLUMNS = [["summer", ["summer"]], ["winter", ["winter"]], ["annual", ["summer", "winter"]]];
 async function pin(x, y) {
   pinned = { x, y };
+  const { lat, lon } = toLatLon(x, y);
+  const temperatures = {};  // season -> statistic -> kelvin (null = no data)
+  for (const [column, seasons] of COLUMNS) {
+    temperatures[column] = {};
+    for (const [stat] of STATS) temperatures[column][stat] = valueAt(await getGrid({ seasons, stat }), x, y);
+  }
+  // Inside the STAMINA app the click selects the landing site there.
+  if (EMBED && window.parent !== window) {
+    window.parent.postMessage({ type: "stamina:site-selected", latitude: lat, longitude: lon, temperatures },
+                              window.location.origin);
+  }
   $("pinned").style.display = "block";
-  $("pPos").textContent = fmtPos(toLatLon(x, y), x, y);
-  const cols = [["summer"], ["winter"], ["summer", "winter"]];
+  $("pPos").textContent = fmtPos({ lat, lon }, x, y);
   const rows = [`<tr><th></th><th>Summer</th><th>Winter</th><th>Annual</th></tr>`];
   for (const [stat, label] of STATS) {
-    const cells = await Promise.all(cols.map(async (seasons) => valueAt(await getGrid({ seasons, stat }), x, y)));
+    const cells = COLUMNS.map(([column]) => temperatures[column][stat]);
     rows.push(`<tr><td>${label}</td>${cells.map((v) => `<td>${v === null ? "–" : v.toFixed(1)}</td>`).join("")}</tr>`);
   }
   $("pTable").innerHTML = rows.join("") + `<tr><td colspan="4" style="color:var(--muted);font-size:11px">kelvin</td></tr>`;
@@ -505,8 +530,12 @@ function resize() {
   if (meta) draw();
 }
 function resetView() {
-  view.x = 0; view.y = 0;
-  view.k = 0.45 * Math.min(canvas.width, canvas.height) / meta.radiusM;
+  // Centre the map in the free space to the right of the controls panel.
+  const panel = $("controls").getBoundingClientRect();
+  const left = panel.right * dpr(), freeW = canvas.width - left;
+  view.k = 0.45 * Math.min(freeW, canvas.height) / meta.radiusM;
+  view.x = -((left + canvas.width) / 2 - canvas.width / 2) / view.k;
+  view.y = 0;
   draw();
 }
 
@@ -542,6 +571,12 @@ canvas.addEventListener("wheel", (e) => {
   draw(); updateReadout(e);
 }, { passive: false });
 canvas.addEventListener("dblclick", resetView);
+$("collapse").onclick = () => {
+  const collapsed = $("controls").classList.toggle("collapsed");
+  $("collapse").textContent = collapsed ? "▾" : "▴";
+  $("collapse").setAttribute("aria-expanded", String(!collapsed));
+  $("collapse").title = collapsed ? "Expand controls" : "Collapse controls";
+};
 $("unpin").onclick = () => { pinned = null; $("pinned").style.display = "none"; draw(); };
 
 async function showCurrentLayer() {
@@ -570,7 +605,7 @@ window.addEventListener("resize", resize);
   try {
     meta = await (await fetch("data/meta.json")).json();
   } catch {
-    $("status").textContent = "No data: run `uv run diviner_web.py` and open the URL it prints.";
+    $("status").textContent = "No map data yet: run `uv run lola_2d/diviner_web.py --no-serve` from the repository root.";
     return;
   }
   $("source").textContent = `${meta.source} · ${(2 * meta.radiusM / meta.size).toFixed(0)} m/px`;
