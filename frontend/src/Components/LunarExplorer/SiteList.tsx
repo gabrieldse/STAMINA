@@ -9,6 +9,8 @@ export type SiteGroup = {
   note: string;
   items: { id: string; name: string; color: string }[];
   startOpen: boolean;
+  // User-made sites: can be renamed, deleted and exported.
+  editable?: boolean;
 };
 
 type Props = {
@@ -17,6 +19,9 @@ type Props = {
   selectedId: string | null;
   onToggleSite: (id: string) => void;
   onToggleGroup: (ids: string[]) => void;
+  onRenameSite: (id: string, name: string) => void;
+  onDeleteSite: (id: string) => void;
+  onExportGroup: (key: string) => void;
 };
 
 // Collapsible site menu over the right side of the map, like the Website
@@ -28,17 +33,27 @@ export default function SiteList({
   selectedId,
   onToggleSite,
   onToggleGroup,
+  onRenameSite,
+  onDeleteSite,
+  onExportGroup,
 }: Props) {
   const [isOpen, setIsOpen] = useState(true);
   const [openGroups, setOpenGroups] = useState(
     () => new Set(groups.filter((group) => group.startOpen).map((group) => group.key))
   );
+  // Site being renamed and the text typed so far
+  const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
 
   function toggleFold(key: string) {
     const next = new Set(openGroups);
     if (next.has(key)) next.delete(key);
     else next.add(key);
     setOpenGroups(next);
+  }
+
+  function commitRename() {
+    if (editing && editing.name.trim()) onRenameSite(editing.id, editing.name.trim());
+    setEditing(null);
   }
 
   return (
@@ -70,6 +85,19 @@ export default function SiteList({
                 {folded ? "▸" : "▾"} {group.title}
               </button>
 
+              {group.editable && (
+                <button
+                  type="button"
+                  className="site-list-action"
+                  onClick={() => onExportGroup(group.key)}
+                  disabled={ids.length === 0}
+                  title={`Export ${group.title} points (JSON)`}
+                  aria-label={`Export ${group.title} points`}
+                >
+                  ⤓
+                </button>
+              )}
+
               <label className="site-list-switch" title={allOn ? "Turn all off" : "Turn all on"}>
                 <input
                   type="checkbox"
@@ -89,22 +117,85 @@ export default function SiteList({
 
                 {group.items.map((item) => {
                   const off = hiddenIds.has(item.id);
+                  const className =
+                    "site-list-item" +
+                    (off ? " off" : "") +
+                    (item.id === selectedId ? " active" : "");
+                  const dot = <i style={{ background: item.color, color: item.color }} />;
+
+                  if (!group.editable) {
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={className}
+                        aria-pressed={!off}
+                        title={off ? "Turn on" : "Turn off"}
+                        onClick={() => onToggleSite(item.id)}
+                      >
+                        {dot}
+                        <span>{item.name}</span>
+                      </button>
+                    );
+                  }
+
+                  // Editable: toggle, rename (✎) and delete (× or the Delete key)
                   return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      className={
-                        "site-list-item" +
-                        (off ? " off" : "") +
-                        (item.id === selectedId ? " active" : "")
-                      }
-                      aria-pressed={!off}
-                      title={off ? "Turn on" : "Turn off"}
-                      onClick={() => onToggleSite(item.id)}
-                    >
-                      <i style={{ background: item.color, color: item.color }} />
-                      <span>{item.name}</span>
-                    </button>
+                    <div key={item.id} className={className + " editable"}>
+                      {editing?.id === item.id ? (
+                        <>
+                          {dot}
+                          <input
+                            className="site-list-rename"
+                            value={editing.name}
+                            autoFocus
+                            aria-label="Point name"
+                            onChange={(e) => setEditing({ id: item.id, name: e.target.value })}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") commitRename();
+                              if (e.key === "Escape") setEditing(null);
+                            }}
+                            onBlur={commitRename}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className="site-list-name"
+                            aria-pressed={!off}
+                            title={off ? "Turn on" : "Turn off"}
+                            onClick={() => onToggleSite(item.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Delete") onDeleteSite(item.id);
+                            }}
+                          >
+                            {dot}
+                            <span>{item.name}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            className="site-list-action"
+                            onClick={() => setEditing({ id: item.id, name: item.name })}
+                            title="Rename"
+                            aria-label={`Rename ${item.name}`}
+                          >
+                            ✎
+                          </button>
+
+                          <button
+                            type="button"
+                            className="site-list-action"
+                            onClick={() => onDeleteSite(item.id)}
+                            title="Delete"
+                            aria-label={`Delete ${item.name}`}
+                          >
+                            ×
+                          </button>
+                        </>
+                      )}
+                    </div>
                   );
                 })}
               </>

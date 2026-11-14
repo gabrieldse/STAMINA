@@ -174,3 +174,69 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Editable (custom) sites: toggle + rename + delete in one row */
+.site-list-item.editable {
+  gap: 4px;
+  padding-right: 4px;
+  cursor: default;
+}
+
+.site-list-name {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.site-list-action {
+  flex-shrink: 0;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: #c8c8c8;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.site-list-action:hover {
+  background: #4a4a4e;
+  color: #fff;
+}
+
+.site-list-action:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.site-list-heading .site-list-action {
+  margin-left: auto;
+}
+
+/* Keep the switch next to the export button */
+.site-list-heading .site-list-action + .site-list-switch {
+  margin-left: 2px;
+}
+
+.site-list-rename {
+  flex: 1;
+  min-width: 0;
+  padding: 1px 4px;
+  border: 1px solid #6b8fc5;
+  border-radius: 4px;
+  background: #111;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+}

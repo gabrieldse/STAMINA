@@ -13,6 +13,8 @@ import type {
 import { LANDING_SITES, isOnPolarMap } from "../../types/sites";
 import type { LandingSite } from "../../types/sites";
 
+import { downloadJson } from "../../utils/download";
+
 import SiteInfoCard from "./SiteInfoCard";
 import SiteList from "./SiteList";
 import type { SiteGroup } from "./SiteList";
@@ -106,6 +108,8 @@ export default function MapPanel({
   useEffect(() => {
     customRef.current = customSites;
   }, [customSites]);
+  // Numbers new points; never reused, so names stay unique after deletes.
+  const nextPointRef = useRef(1);
 
   // Messages from the map: readiness, clicked sites and selection area.
   useEffect(() => {
@@ -137,7 +141,7 @@ export default function MapPanel({
           // A click on empty map: keep it as a new custom point.
           const point: LunarSite = {
             id: `custom-${Date.now()}`,
-            name: `Point ${customRef.current.length + 1}`,
+            name: `Point ${nextPointRef.current++}`,
             latitude,
             longitude,
             ...values,
@@ -223,6 +227,47 @@ export default function MapPanel({
     setHiddenIds(next);
   }
 
+  // Custom points: rename, delete, export
+  function renameSite(id: string, name: string) {
+    setCustomSites((sites) =>
+      sites.map((site) => (site.id === id ? { ...site, name } : site))
+    );
+    if (selectedSite?.id === id) onSiteSelect({ ...selectedSite, name });
+  }
+
+  function deleteSite(id: string) {
+    setCustomSites((sites) => sites.filter((site) => site.id !== id));
+    if (hiddenIds.has(id)) {
+      const next = new Set(hiddenIds);
+      next.delete(id);
+      setHiddenIds(next);
+    }
+    if (selectedId === id) onSiteClear();
+  }
+
+  function exportGroup(key: string) {
+    if (key !== "custom") return;
+
+    downloadJson(
+      {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        description:
+          "STAMINA custom points. Latitude/longitude in degrees (east-positive), " +
+          "elevation in metres relative to 1737.4 km (LOLA), temperatures in kelvin " +
+          "(Diviner season summaries, Williams et al. 2019).",
+        points: customSites.map((site) => ({
+          name: site.name,
+          latitude: site.latitude,
+          longitude: site.longitude,
+          elevationM: site.elevationM ?? null,
+          temperaturesK: site.temperatures ?? null,
+        })),
+      },
+      "stamina-custom-points.json"
+    );
+  }
+
   const groups: SiteGroup[] = [
     {
       key: "artemis",
@@ -234,9 +279,10 @@ export default function MapPanel({
     {
       key: "custom",
       title: "Custom",
-      note: "Click the map",
+      note: "Click the map to add",
       items: customSites.map(({ id, name }) => ({ id, name, color: CUSTOM_COLOR })),
       startOpen: true,
+      editable: true,
     },
     {
       key: "apollo",
@@ -273,6 +319,9 @@ export default function MapPanel({
           selectedId={selectedId}
           onToggleSite={toggleSite}
           onToggleGroup={toggleGroup}
+          onRenameSite={renameSite}
+          onDeleteSite={deleteSite}
+          onExportGroup={exportGroup}
         />
 
         {infoSite && closedInfoId !== infoSite.id && (
