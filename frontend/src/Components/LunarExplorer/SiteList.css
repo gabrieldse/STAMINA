@@ -240,3 +240,34 @@
   font: inherit;
   font-size: 12px;
 }
+
+/* "+ Add point": arms one click on the map */
+.site-add {
+  margin: 0 0 4px;
+  padding: 5px 8px;
+  border: 1px dashed #8a8a8a;
+  border-radius: 10px;
+  background: none;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.site-add:hover {
+  border-color: #ff9f43;
+}
+
+.site-add.active {
+  border-style: solid;
+  border-color: #ff9f43;
+  background: rgba(255, 159, 67, 0.18);
+}
+
+.site-add-hint {
+  padding: 0 4px 4px;
+  color: #ffc58f;
+  font-size: 10px;
+  line-height: 1.4;
+}

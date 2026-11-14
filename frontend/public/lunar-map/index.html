@@ -14,6 +14,7 @@
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
     font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
   #map { position: fixed; inset: 0; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+  #map.adding { cursor: crosshair; }
   #map.dragging { cursor: grabbing; }
   .panel { position: fixed; background: var(--panel); border: 1px solid var(--border);
     border-radius: 8px; padding: 12px 14px; }
@@ -196,6 +197,12 @@ const image = document.createElement("canvas"), maskImage = document.createEleme
 const view = { x: 0, y: 0, k: 1 };  // centre in metres, pixels per metre
 // Named landing sites sent by the STAMINA app: { id, name, color, x, y } in metres.
 let appSites = [];
+// In the app, clicking empty map only adds a point after "+ Add point"; on its own the viewer always pins.
+let addMode = !EMBED;
+function setAddMode(on) {
+  addMode = on;
+  canvas.classList.toggle("adding", EMBED && on);
+}
 // Plain Moon base map from LOLA: hillshade (uint8) and elevation (int16 m, -32768 = no data).
 let base = null;
 // Colour range of the temperature image, shown as a legend next to the scale bar (null = plain Moon).
@@ -700,6 +707,7 @@ window.addEventListener("message", (event) => {
     }));
     draw();
   }
+  if (data?.type === "stamina:add-mode") setAddMode(data.enabled);
   if (data?.type === "stamina:focus-site") {
     const site = appSites.find((item) => item.id === data.siteId);
     if (site) pin(site.x, site.y, site.id);
@@ -744,7 +752,10 @@ canvas.addEventListener("pointerup", (e) => {
     // A click on a landing site marker selects that site.
     const site = siteNear(e.offsetX * dpr(), e.offsetY * dpr());
     if (site) pin(site.x, site.y, site.id);
-    else if (Math.hypot(w.x, w.y) <= meta.radiusM) pin(w.x, w.y);
+    else if (addMode && Math.hypot(w.x, w.y) <= meta.radiusM) {
+      pin(w.x, w.y);
+      if (EMBED) setAddMode(false);  // one point per "+ Add point"
+    }
   }
   drag = null;
 });
@@ -788,6 +799,13 @@ $("addCond").onclick = addCondition;
 document.querySelectorAll('input[name="selOp"]').forEach((i) => (i.onchange = updateSelection));
 $("selOnly").onchange = updateSelection;
 window.addEventListener("resize", resize);
+// Esc cancels "+ Add point" (keys typed in the map don't reach the app)
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && EMBED && addMode) {
+    setAddMode(false);
+    postToApp({ type: "stamina:add-mode", enabled: false });
+  }
+});
 
 (async function init() {
   try {

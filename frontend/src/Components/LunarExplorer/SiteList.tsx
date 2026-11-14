@@ -22,6 +22,9 @@ type Props = {
   onRenameSite: (id: string, name: string) => void;
   onDeleteSite: (id: string) => void;
   onExportGroup: (key: string) => void;
+  // "+ Add point": the next click on the map places a custom point.
+  addMode: boolean;
+  onToggleAddMode: () => void;
 };
 
 // Collapsible site menu over the right side of the map, like the Website
@@ -36,6 +39,8 @@ export default function SiteList({
   onRenameSite,
   onDeleteSite,
   onExportGroup,
+  addMode,
+  onToggleAddMode,
 }: Props) {
   const [isOpen, setIsOpen] = useState(true);
   const [openGroups, setOpenGroups] = useState(
@@ -67,6 +72,25 @@ export default function SiteList({
         <span>Landing sites</span>
         <span aria-hidden="true">☰</span>
       </button>
+
+      {isOpen && (
+        <>
+          <button
+            type="button"
+            className={"site-add" + (addMode ? " active" : "")}
+            onClick={onToggleAddMode}
+            aria-pressed={addMode}
+          >
+            {addMode ? "Cancel" : "+ Add point"}
+          </button>
+
+          {addMode && (
+            <small className="site-add-hint">
+              Click the map to place the point (Esc cancels)
+            </small>
+          )}
+        </>
+      )}
 
       {isOpen && groups.map((group) => {
         const ids = group.items.map((item) => item.id);

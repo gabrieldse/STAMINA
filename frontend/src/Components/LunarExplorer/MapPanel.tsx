@@ -81,7 +81,9 @@ type ViewerMessage =
   | {
       type: "stamina:selection-stats";
       stats: TemperatureSelectionStats | null;
-    };
+    }
+  // The map cancelled "+ Add point" (Esc pressed inside it).
+  | { type: "stamina:add-mode"; enabled: boolean };
 
 function isViewerMessage(data: unknown): data is ViewerMessage {
   const type = (data as { type?: unknown } | null)?.type;
@@ -110,6 +112,8 @@ export default function MapPanel({
   }, [customSites]);
   // Numbers new points; never reused, so names stay unique after deletes.
   const nextPointRef = useRef(1);
+  // "+ Add point": the next click on empty map places a custom point.
+  const [addMode, setAddMode] = useState(false);
 
   // Messages from the map: readiness, clicked sites and selection area.
   useEffect(() => {
@@ -148,12 +152,17 @@ export default function MapPanel({
           };
           customRef.current = [...customRef.current, point];
           setCustomSites(customRef.current);
+          setAddMode(false);
           onSiteSelect(point);
         }
       }
 
       if (message.type === "stamina:selection-stats") {
         onTemperatureSelection(message.stats);
+      }
+
+      if (message.type === "stamina:add-mode") {
+        setAddMode(message.enabled);
       }
     }
 
@@ -185,6 +194,20 @@ export default function MapPanel({
   useEffect(() => {
     if (viewerReady) postToViewer({ type: "stamina:sites", sites: mapSites });
   }, [viewerReady, mapSites]);
+
+  useEffect(() => {
+    if (viewerReady) postToViewer({ type: "stamina:add-mode", enabled: addMode });
+  }, [viewerReady, addMode]);
+
+  // Esc cancels "+ Add point" while the focus is in the app.
+  useEffect(() => {
+    if (!addMode) return;
+    function cancel(event: KeyboardEvent) {
+      if (event.key === "Escape") setAddMode(false);
+    }
+    window.addEventListener("keydown", cancel);
+    return () => window.removeEventListener("keydown", cancel);
+  }, [addMode]);
 
   // The Temperature filter drives the layer and selection on the map.
   useEffect(() => {
@@ -279,7 +302,7 @@ export default function MapPanel({
     {
       key: "custom",
       title: "Custom",
-      note: "Click the map to add",
+      note: "Use + Add point",
       items: customSites.map(({ id, name }) => ({ id, name, color: CUSTOM_COLOR })),
       startOpen: true,
       editable: true,
@@ -322,6 +345,8 @@ export default function MapPanel({
           onRenameSite={renameSite}
           onDeleteSite={deleteSite}
           onExportGroup={exportGroup}
+          addMode={addMode}
+          onToggleAddMode={() => setAddMode(!addMode)}
         />
 
         {infoSite && closedInfoId !== infoSite.id && (
