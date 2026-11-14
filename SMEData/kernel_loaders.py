@@ -1,7 +1,7 @@
 import spiceypy as sp
 
-import pathlib as pathl
-ROOT = pathl.Path(__file__).resolve().parent
+from pathlib import Path
+ROOT = Path(__file__).resolve().parent
 
 KERNELS = [
     "naif0012.tls", #conversion of time strings to ephemeris time data
