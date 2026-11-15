@@ -18,7 +18,6 @@ LUNAR_GEOGRAPHIC = PyprojCRS.from_proj4(
     f"+proj=longlat +R={MOON_RADIUS_M} +no_defs"
 )
 
-
 def _elevation_multiplier(source, elevation_units):
     """Resolve the vertical unit without confusing it with the map's units."""
     unit = elevation_units if elevation_units is not None else source.units[0]
@@ -67,9 +66,9 @@ def _check_grid_size(width, height, directions):
     if width < 1 or height < 1:
         raise ValueError("DEM has an empty projected extent")
     horizon_bytes = width * height * directions * np.dtype(np.float32).itemsize
-    if horizon_bytes > 1024**3:
+    if horizon_bytes > 3 * 1024**3 // 2:
         raise ValueError(
-            "Horizon grid exceeds 1 GiB before working memory; "
+            "Horizon grid exceeds 1.5 GiB before working memory; "
             "increase pixel_size_m, reduce directions, or use a regional crop"
         )
 

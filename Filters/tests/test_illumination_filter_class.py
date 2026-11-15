@@ -1,3 +1,4 @@
+import json
 import sys
 import tempfile
 import unittest
@@ -14,7 +15,7 @@ from rasterio.transform import from_origin
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
-from Filters.Sunlight.illumination_filter import IlluminationFilter
+from Filters.Sunlight.illumination_filter import IlluminationFilter, nearest_mask_filename
 from Filters.Sunlight import illumination_funcs
 
 
@@ -28,6 +29,68 @@ def write_dem(path):
 
 
 class IlluminationFilterClassTests(unittest.TestCase):
+    def test_hourly_run_saves_separate_masks_and_reuses_horizons(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            dem_path = Path(tmp) / "terrain.tif"
+            write_dem(dem_path)
+            output_dir = Path(tmp) / "hourly"
+            start = illumination_funcs.sp.str2et("2026-11-18T12:00:00")
+            instance = IlluminationFilter(
+                dem_path=dem_path, et_init=start, et_final=start + 7300, output_dir=output_dir,
+                pixel_size_m=100000, search_dist_m=100000, directions=4,
+                elevation_units="m",
+            )
+            with patch.object(illumination_funcs.sme, "get_sun_vec",
+                              return_value=(np.array([1e8, 0, 0]), 0)) as sun, \
+                 patch.object(illumination_funcs, "compute_horizon_map",
+                              wraps=illumination_funcs.compute_horizon_map) as compute:
+                masks = instance.run_over_time()
+                self.assertEqual([call.args[0] for call in sun.call_args_list],
+                                 [start, start + 3600, start + 7200])
+                self.assertEqual(compute.call_count, 1)
+                self.assertEqual(masks, [
+                    output_dir / f"illumination_2026-11-18T{hour:02d}-00-00.000Z.png"
+                    for hour in (12, 13, 14)
+                ])
+                self.assertEqual(set(output_dir.rglob("*.png")), set(masks))
+                with (output_dir / "illumination_times.json").open(encoding="utf-8") as index:
+                    samples = json.load(index)["samples"]
+                self.assertEqual([sample["filename"] for sample in samples],
+                                 [path.name for path in masks])
+                self.assertEqual([sample["et"] for sample in samples],
+                                 [start, start + 3600, start + 7200])
+                for utc, expected in (("2026-11-18T11:00:00", masks[0]),
+                                      ("2026-11-18T12:29:00", masks[0]),
+                                      ("2026-11-18T12:31:00", masks[1]),
+                                      ("2026-11-18T15:00:00", masks[2])):
+                    self.assertEqual(output_dir / nearest_mask_filename(samples, utc), expected)
+                with patch.object(illumination_funcs.sp, "str2et", return_value=start + 1800):
+                    self.assertEqual(nearest_mask_filename(samples, "unused"), masks[0].name)
+                full_images = instance.calculate_at_time(start, Path(tmp) / "single")
+                self.assertEqual(compute.call_count, 1)
+                np.testing.assert_array_equal(mpimg.imread(masks[0]), mpimg.imread(full_images[1]))
+                self.assertTrue(all(path.exists() for path in full_images))
+
+    def test_hourly_run_validates_range_and_includes_single_start(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            instance = IlluminationFilter(et_init=10, et_final=10, output_dir=tmp)
+            with patch.object(instance, "calculate_at_time", return_value="mask") as calculate:
+                self.assertEqual(instance.run_over_time(), ["mask"])
+                self.assertEqual(calculate.call_args.args[0], 10)
+                self.assertTrue(calculate.call_args.kwargs["mask_only"])
+                instance.et_final = 3609.999999
+                calculate.reset_mock()
+                self.assertEqual(instance.run_over_time(), ["mask", "mask"])
+                self.assertEqual([call.args[0] for call in calculate.call_args_list], [10, 3609.999999])
+                instance.et_final = 3609.98
+                calculate.reset_mock()
+                self.assertEqual(instance.run_over_time(), ["mask"])
+                for start, end in [(10, 9), (float("nan"), 10), (10, float("inf"))]:
+                    instance.et_init, instance.et_final = start, end
+                    with self.subTest(start=start, end=end), self.assertRaises(ValueError):
+                        instance.run_over_time()
+                self.assertEqual(calculate.call_count, 1)
+
     def test_constructor_stores_configuration(self):
         filter_instance = IlluminationFilter(
             "terrain.lbl", 123.0, "output",

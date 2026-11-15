@@ -62,12 +62,13 @@ def download_buffered_dem(bounds, distance_m, cache_dir):
     # Account for raw pixels, scaled heights, and temporary arrays before download.
     estimated_pixels = 0
     for west, south, east, north in windows:
+        #the 118 is 
         width = math.ceil((east - west) * METERS_PER_DEGREE / 118) + 2
         height = math.ceil((north - south) * METERS_PER_DEGREE / 118) + 2
         estimated_pixels += width * height
-    if estimated_pixels * 10 > 1024**3:
+    if estimated_pixels * 10 > 3 * 1024**3 // 2:
         raise ValueError(
-            "The buffered LOLA crop may require more than 1 GiB of working memory; "
+            "The buffered LOLA crop may require more than 1.5 GiB of working memory; "
             "use smaller bounds or a shorter search distance"
         )
     cache_dir = Path(cache_dir)

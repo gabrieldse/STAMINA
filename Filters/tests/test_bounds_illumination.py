@@ -12,7 +12,7 @@ from rasterio.crs import CRS
 from rasterio.transform import from_bounds
 
 from Filters.Sunlight import illumination_funcs, lola_download
-from Filters.Sunlight.dem_geometry import MOON_RADIUS_M, load_bounded_terrain
+from Filters.Sunlight.dem_geometry import MOON_RADIUS_M, _check_grid_size, load_bounded_terrain
 from Filters.Sunlight.illumination_filter import IlluminationFilter
 
 
@@ -83,6 +83,31 @@ class BoundsIlluminationTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "working memory"):
                     lola_download.download_buffered_dem((-180, -90, 180, -80), 120000, tmp)
                 download.assert_not_called()
+
+    def test_download_limit_boundary(self):
+        def window(width, height):
+            degrees_per_pixel = 118 / lola_download.METERS_PER_DEGREE
+            return (0, 0, (width - 2.1) * degrees_per_pixel,
+                    (height - 2.1) * degrees_per_pixel)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.object(lola_download, "buffered_download_bounds",
+                              return_value=[window(12000, 13421), window(3, 3090)]), \
+                 patch.object(lola_download, "download_crop",
+                              side_effect=RuntimeError("downloader reached")):
+                with self.assertRaisesRegex(RuntimeError, "downloader reached"):
+                    lola_download.download_buffered_dem((0, 0, 1, 1), 10000, tmp)
+            with patch.object(lola_download, "buffered_download_bounds",
+                              return_value=[window(12000, 13421), window(3, 3092)]), \
+                 patch.object(lola_download, "download_crop") as download:
+                with self.assertRaisesRegex(ValueError, "1.5 GiB"):
+                    lola_download.download_buffered_dem((0, 0, 1, 1), 10000, tmp)
+                download.assert_not_called()
+
+    def test_horizon_limit_accepts_exactly_1_5_gib(self):
+        _check_grid_size(402653184, 1, 1)
+        with self.assertRaisesRegex(ValueError, "1.5 GiB"):
+            _check_grid_size(402653185, 1, 1)
 
     def test_large_horizon_grid_fails_before_download(self):
         with tempfile.TemporaryDirectory() as tmp:
