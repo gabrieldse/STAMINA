@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import MapPanel from "./MapPanel";
 import type { ComponentProps } from "react";
 import { LANDING_SITES } from "../../types/sites";
@@ -9,6 +9,34 @@ export type BodyPositions = { sun: number[]; earth: number[]; utc: string };
 type PositionSeries = { times: string[]; sun: number[][]; earth: number[][] };
 type Props = Omit<ComponentProps<typeof MapPanel>, "positions" | "positionStatus" | "onVisibleSitesChange"> & { durationDays: number };
 const utc = (value: string) => value.replace("T", " ").replace(":00Z", " UTC");
+
+function MissionDayAxis({ times, durationDays, onSeek }: { times: string[]; durationDays: number; onSeek: (index: number) => void }) {
+  const axisRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const axis = axisRef.current;
+    if (!axis) return;
+    const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
+    observer.observe(axis);
+    return () => observer.disconnect();
+  }, []);
+  const step = Math.max(1, Math.ceil(durationDays / Math.max(1, Math.floor(width / 42))));
+  const days = Array.from({length: Math.ceil(durationDays / step)}, (_, i) => i * step);
+  days.push(durationDays);
+  return <div className="map-site-time-row mission-day-heading">
+    <span>Mission day</span>
+    <div ref={axisRef} className="mission-day-axis" aria-label="Mission days (UTC)">
+      {days.map(day => {
+        const index = Math.min(day * 24, times.length - 1);
+        return <button key={day} type="button" className={day === 0 ? "first" : day === durationDays ? "last" : ""}
+          style={{left: `${100 * (index + .5) / times.length}%`}}
+          title={`${day === durationDays ? "Mission end" : `Day ${day + 1}`} · ${utc(times[index])}`}
+          aria-label={`Inspect ${day === durationDays ? "mission end" : `mission day ${day + 1}`} at ${utc(times[index])}`}
+          onClick={() => onSeek(index)}>{day === durationDays ? "End" : `D${day + 1}`}</button>;
+      })}
+    </div>
+  </div>;
+}
 
 type Horizon = { observerM: number[]; horizonRadians: number[] };
 function visible(vector: number[], latitude: number, longitude: number, horizon: Horizon) {
@@ -135,6 +163,7 @@ function TimelineWindow({ durationDays, ...props }: Props) {
         {sites.some(site => Boolean(horizonErrors[site.id])) && <button type="button" onClick={() => { setHorizonErrors({}); setAttempt(value => value + 1); }}>Retry terrain horizons</button>}
         {sites.some(site => !horizons[site.id] && !horizonErrors[site.id]) && <p role="status">Calculating LOLA terrain horizons...</p>}
         <div className="map-site-timelines">
+          {rows.length > 0 && <MissionDayAxis times={series.times} durationDays={durationDays} onSeek={seek} />}
           {rows.map(({ site, sun, earth, passes, runs, ready }) => <div className="map-site-time-row" key={site.id}>
             <button type="button" className={props.selectedSite?.id === site.id ? "selected" : ""} onClick={() => props.onSiteSelect({ ...site, details: LANDING_SITES.find(item => item.id === site.id) })}>{site.name}</button>
             <div className="mission-visibility-bar" aria-label={`${site.name} terrain visibility windows`}>

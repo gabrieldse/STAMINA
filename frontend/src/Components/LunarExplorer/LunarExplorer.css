@@ -454,6 +454,17 @@
 .map-site-time-row > button.selected { color: #e5bd59; }
 .map-site-time-row > span { font-variant-numeric: tabular-nums; }
 .map-site-time-row .mission-visibility-bar { height: 14px; }
+.mission-day-heading { position: sticky; top: 0; z-index: 3; margin-top: 0; padding: 4px 0; background: #333; }
+.map-site-time-row.mission-day-heading > span { grid-column: 1; color: #b9c2cf; }
+.mission-day-axis { position: relative; grid-column: 2; height: 27px; border-bottom: 1px solid #737b85; }
+.mission-day-axis button { position: absolute; bottom: 0; transform: translateX(-50%); padding: 0 0 8px; border: 0; background: none; color: #d6dce5; font: inherit; font-size: 10px; white-space: nowrap; cursor: pointer; }
+.mission-day-axis button::after { content: ""; position: absolute; left: 50%; bottom: 0; height: 5px; border-left: 1px solid #939eaa; }
+.mission-day-axis button.first { transform: none; }
+.mission-day-axis button.first::after { left: 0; }
+.mission-day-axis button.last { transform: translateX(-100%); }
+.mission-day-axis button.last::after { left: 100%; }
+.mission-day-axis button:hover { color: #e5bd59; }
+.mission-day-axis button:focus-visible { outline: 2px solid #e5bd59; outline-offset: 2px; }
 .mission-segment.matching { background: #66cda4; }
 .site-time-match { color: #87e4bb; }
 @media (max-width: 600px) {
