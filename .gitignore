@@ -2,3 +2,13 @@
 __pycache__/
 *.py[cod]
 backend/*.log
+.runtime/
+.DS_Store
+.vscode/
+.env
+.env.*
+!.env.example
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
