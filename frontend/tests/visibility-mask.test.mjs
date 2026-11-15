@@ -29,3 +29,24 @@ test('map hides obstructed pixels and rejects clicks there; disabling restores t
   context.apply(null);
   assert.equal(context.matches(5, 5), true);
 });
+
+test('visibility mask is drawn in both the full map and each comparison crop', () => {
+  const html = readFileSync(new URL('../public/lunar-map/index.html', import.meta.url), 'utf8');
+  const source = html.slice(html.indexOf('function drawMap(inCell)'), html.indexOf('function drawPin()'));
+  const calls = [];
+  const mask = {}, image = {};
+  const ctx = new Proxy({}, { get(target, key) { return target[key] ?? ((...args) => calls.push([key, ...args])); } });
+  const context = {
+    ctx, image, visibilityMask: mask, visibilityConfig: {},
+    meta: { radiusM: 10, size: 2 }, view: { k: 1 }, frame: { x: 2, y: 3, w: 8, h: 9 },
+    dpr: () => 1, toScreen: () => ({ sx: 0, sy: 0 }), $: () => ({ checked: false }),
+    selMask: null, EMBED: true, drawTerrain() {}, drawTerrainContours() {}, drawSites() {}, drawPin() {},
+  };
+  runInNewContext(source+'\nthis.paint = drawMap;', context);
+  for (const inCell of [false, true]) {
+    calls.length = 0;
+    context.paint(inCell);
+    assert.equal(calls.filter(([name, source]) => name === 'drawImage' && source === mask).length, 1);
+    if (inCell) assert.ok(calls.some(call => call[0] === 'rect' && call[1] === 2 && call[2] === 3 && call[3] === 8 && call[4] === 9));
+  }
+});

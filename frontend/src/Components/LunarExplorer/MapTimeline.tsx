@@ -10,7 +10,7 @@ type Props = Omit<ComponentProps<typeof MapPanel>, "positions" | "positionStatus
 const utc = (value: string) => value.replace("T", " ").replace(":00Z", " UTC");
 
 type Horizon = { observerM: number[]; horizonRadians: number[] };
-export function visible(vector: number[], latitude: number, longitude: number, horizon: Horizon) {
+function visible(vector: number[], latitude: number, longitude: number, horizon: Horizon) {
   const lat = latitude*Math.PI/180, lon = longitude*Math.PI/180;
   const up = [Math.cos(lat)*Math.cos(lon), Math.cos(lat)*Math.sin(lon), Math.sin(lat)];
   const east = [-Math.sin(lon), Math.cos(lon), 0];
@@ -72,7 +72,7 @@ function TimelineWindow({ durationDays, ...props }: Props) {
   const sites = useMemo(() => {
     const named = LANDING_SITES.filter(isOnPolarMap);
     const selected = props.selectedSite;
-    return selected?.latitude != null && selected.longitude != null && !named.some(site => site.id === selected.id)
+    return selected?.latitude != null && selected.latitude <= -80 && selected.longitude != null && !named.some(site => site.id === selected.id)
       ? [...named, { id: selected.id, name: selected.name, latitude: selected.latitude, longitude: selected.longitude }]
       : named;
   }, [props.selectedSite]);

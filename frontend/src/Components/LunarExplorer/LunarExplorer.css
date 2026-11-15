@@ -85,13 +85,6 @@
   font-weight: bold;
 }
 
-.filter-toggle {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-top: 12px;
-}
-
 .filter-item select {
   width: 100%;
   padding: 10px;
@@ -107,8 +100,7 @@
   overflow: hidden;
 }
 
-.map-header,
-.map-footer {
+.map-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -116,8 +108,7 @@
   padding: 15px 20px;
 }
 
-.map-header span,
-.map-footer {
+.map-header span {
   color: #b6b6b6;
   font-size: 12px;
 }
@@ -357,39 +348,6 @@
   background: #252525;
 }
 
-.explorer-map-toolbar {
-  flex-shrink: 0;
-  min-height: 58px;
-
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-
-  padding: 12px 20px;
-  background: #2d2d2d;
-  border-bottom: 1px solid #535353;
-}
-
-.explorer-map-toolbar > div {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.explorer-map-toolbar strong {
-  font-size: 14px;
-}
-
-.explorer-map-toolbar span {
-  color: #a0a0a0;
-  font-size: 11px;
-}
-
-.explorer-map-context {
-  text-align: right;
-}
-
 .explorer-map-area {
   flex: 1;
   display: flex;
@@ -419,8 +377,7 @@
   min-height: 0;
 }
 
-.explorer-map-area .map-header,
-.explorer-map-area .map-footer {
+.explorer-map-area .map-header {
   flex-shrink: 0;
 }
 
@@ -631,7 +588,6 @@
       minmax(0, 1fr)
       var(--right-panel-width, 280px);
   }
-  .explorer-map-toolbar .explorer-map-context { display: none; }
 }
 
 @media (max-width: 850px) {
@@ -676,7 +632,7 @@
 .map-workspace-embed {
   display: block;
   padding: 0;
-  background: #2f2f2f;
+  background: #000;
 }
 
 .lunar-map-frame {
@@ -889,5 +845,103 @@
 
   .explorer-left-panel .temperature-segmented span {
     padding: 4px 2px;
+  }
+}
+
+/* COMPARE button (below Run Scientific Analysis) */
+
+.explorer-compare-button {
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid #ff9f43;
+  border-radius: 8px;
+  background: rgba(255, 159, 67, 0.16);
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.explorer-compare-button:hover:not(:disabled) {
+  background: rgba(255, 159, 67, 0.3);
+}
+
+.explorer-compare-button.active {
+  background: #ff9f43;
+  color: #1e1e1e;
+}
+
+.explorer-compare-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Comparison header controls in the map bar */
+.compare-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.compare-controls select,
+.compare-controls button {
+  padding: 3px 8px;
+  border: 1px solid #555;
+  border-radius: 6px;
+  background: #232326;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.compare-controls button:hover {
+  border-color: #ff9f43;
+}
+
+/* MAP TOOLBAR: the show/hide buttons for the side panels */
+.explorer-map-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 12px;
+  background: #2d2d2d;
+  border-bottom: 1px solid #535353;
+}
+
+/* Map notes under the map (contours, elevation masks) */
+.map-footer {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 6px 20px;
+  color: #b6b6b6;
+  font-size: 12px;
+}
+
+/* Left panel: the generic intro repeats the heading; keep the elevation-filter note */
+.explorer-left-panel .explorer-filters > p:first-of-type {
+  display: none;
+}
+
+.explorer-left-panel .filter-item select {
+  padding: 5px 8px;
+  margin-top: 4px;
+}
+
+.explorer-left-panel .filter-item {
+  padding: 6px 0;
+}
+
+/* Very short screens: the [todo] placeholders are the first thing to go */
+@media (max-height: 660px) {
+  .explorer-left-panel .temperature-todo {
+    display: none;
   }
 }
