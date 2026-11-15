@@ -1,0 +1,6 @@
+.circular-site-map { position: absolute; inset: 0; background: #08090b; }
+.circular-site-map canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+.circular-site-map canvas.dragging { cursor: grabbing !important; }
+.circular-map-controls { position: absolute; top: 54px; left: 12px; display: flex; gap: 6px; align-items: center; color: #ccd5df; font-size: 11px; }
+.circular-map-controls button { padding: 5px 10px; border: 1px solid #697785; border-radius: 5px; background: #242a32; color: white; cursor: pointer; }
+.circular-map-caption { position: absolute; bottom: 10px; left: 165px; max-width: calc(100% - 365px); font-size: 10px; color: #b4c1cd; pointer-events: none; }

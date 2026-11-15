@@ -18,7 +18,6 @@ export default function WelcomeModal({
         aria-modal="true"
         aria-labelledby="welcome-title"
       >
-        <div className="welcome-symbol">☾</div>
 
         <p className="welcome-eyebrow">
           WELCOME TO STAMINA
@@ -35,7 +34,6 @@ export default function WelcomeModal({
 
         <div className="welcome-options">
           <div className="welcome-option featured">
-            <div className="welcome-option-icon">🚀</div>
 
             <h3>Discover the Site</h3>
 
@@ -49,12 +47,11 @@ export default function WelcomeModal({
               className="welcome-primary"
               onClick={onStartTutorial}
             >
-              Start Site Demo →
+              Start Site Demo
             </button>
           </div>
 
           <div className="welcome-option">
-            <div className="welcome-option-icon">🌕</div>
 
             <h3>Free Exploration</h3>
 
@@ -68,7 +65,7 @@ export default function WelcomeModal({
               className="welcome-secondary"
               onClick={onExplore}
             >
-              Explore Freely →
+              Explore Freely
             </button>
           </div>
         </div>

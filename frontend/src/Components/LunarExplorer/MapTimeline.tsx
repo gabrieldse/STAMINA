@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import MapPanel from "./MapPanel";
 import type { ComponentProps } from "react";
-import { LANDING_SITES, isOnPolarMap } from "../../types/sites";
+import { LANDING_SITES } from "../../types/sites";
+import type { VisiblePolarSite } from "../../types/sites";
 import { apiErrorMessage } from "../../services/apiError";
 
 export type BodyPositions = { sun: number[]; earth: number[]; utc: string };
 type PositionSeries = { times: string[]; sun: number[][]; earth: number[][] };
-type Props = Omit<ComponentProps<typeof MapPanel>, "positions" | "positionStatus"> & { durationDays: number };
+type Props = Omit<ComponentProps<typeof MapPanel>, "positions" | "positionStatus" | "onVisibleSitesChange"> & { durationDays: number };
 const utc = (value: string) => value.replace("T", " ").replace(":00Z", " UTC");
 
 type Horizon = { observerM: number[]; horizonRadians: number[] };
@@ -22,13 +23,15 @@ function visible(vector: number[], latitude: number, longitude: number, horizon:
   return Math.atan2(dot(up),Math.hypot(e,n)) > horizon.horizonRadians[Math.min(719,Math.floor(az*720/(2*Math.PI)))];
 }
 
-// Remount on mission-window changes: old frames can never leak into a new date range.
+// Keep the map/menu mounted when changing mission dates, preserving custom sites and center.
 export default function MapTimeline(props: Props) {
-  return <TimelineWindow key={`${props.date}-${props.durationDays}`} {...props} />;
+  return <TimelineWindow {...props} />;
 }
 
 function TimelineWindow({ durationDays, ...props }: Props) {
-  const [series, setSeries] = useState<PositionSeries | null>(null);
+  const windowKey = `${props.date}-${durationDays}`;
+  const [loadedSeries, setLoadedSeries] = useState<{ key: string; value: PositionSeries } | null>(null);
+  const series = loadedSeries?.key === windowKey ? loadedSeries.value : null;
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [index, setIndex] = useState(0);
@@ -40,9 +43,13 @@ function TimelineWindow({ durationDays, ...props }: Props) {
   const enabled = sunThreshold || earthThreshold;
   const [horizons, setHorizons] = useState<Record<string, Horizon>>({});
   const [horizonErrors, setHorizonErrors] = useState<Record<string, string>>({});
+  const [sites, setSites] = useState<VisiblePolarSite[]>([]);
 
   useEffect(() => {
     const controller = new AbortController();
+    setIndex(0);
+    setPlaying(false);
+    setError("");
     async function load() {
       try {
         const base = import.meta.env.VITE_API_URL ?? "";
@@ -53,14 +60,14 @@ function TimelineWindow({ durationDays, ...props }: Props) {
         }
         const data: PositionSeries = await response.json();
         if (!data.times?.length || data.sun?.length !== data.times.length || data.earth?.length !== data.times.length) throw new Error("Incomplete ephemeris response.");
-        if (!controller.signal.aborted) setSeries(data);
+        if (!controller.signal.aborted) setLoadedSeries({ key: windowKey, value: data });
       } catch (cause) {
         if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Timeline unavailable.");
       }
     }
     void load();
     return () => controller.abort();
-  }, [props.date, durationDays, attempt]);
+  }, [props.date, durationDays, attempt, windowKey]);
 
   const last = (series?.times.length ?? 1) - 1;
   useEffect(() => {
@@ -69,13 +76,6 @@ function TimelineWindow({ durationDays, ...props }: Props) {
     return () => window.clearInterval(timer);
   }, [playing, series, last, speed, index, enabled, visibilityReady]);
   const positions = useMemo(() => series ? { sun: series.sun[index], earth: series.earth[index], utc: series.times[index] } : null, [series, index]);
-  const sites = useMemo(() => {
-    const named = LANDING_SITES.filter(isOnPolarMap);
-    const selected = props.selectedSite;
-    return selected?.latitude != null && selected.latitude <= -80 && selected.longitude != null && !named.some(site => site.id === selected.id)
-      ? [...named, { id: selected.id, name: selected.name, latitude: selected.latitude, longitude: selected.longitude }]
-      : named;
-  }, [props.selectedSite]);
   useEffect(() => {
     const controller = new AbortController();
     // Publish each result immediately. One unavailable site must not hide all others.
@@ -127,7 +127,7 @@ function TimelineWindow({ durationDays, ...props }: Props) {
     : "";
   function seek(next: number) { setPlaying(false); setIndex(next); }
   return <>
-    <div className="explorer-map-area"><MapPanel {...props} positions={positions} playing={playing && index < last} onVisibilityReady={setVisibilityReady} positionStatus={error || (!series ? "Loading ephemeris…" : visibilityStatus)} /></div>
+    <div className="explorer-map-area"><MapPanel {...props} positions={positions} playing={playing && index < last} onVisibilityReady={setVisibilityReady} onVisibleSitesChange={setSites} positionStatus={error || (!series ? "Loading ephemeris…" : visibilityStatus)} /></div>
     <div className="explorer-timeline map-timeline">
       <div className="explorer-timeline-heading"><strong>Landing sites · time explorer</strong><span>SPICE · 1-hour samples · UTC</span></div>
       {error ? <p role="alert">{error} <button type="button" onClick={() => { setError(""); setAttempt(value => value + 1); }}>Retry</button></p> : !series ? <p role="status">Loading Sun and Earth positions…</p> : <>
@@ -145,7 +145,8 @@ function TimelineWindow({ durationDays, ...props }: Props) {
         <details className="map-timeline-details" open={enabled || undefined}>
           <summary>Landing site visibility & details</summary>
         <p>{enabled ? "Green: all enabled bodies clear the terrain horizon · Dark: obstructed or unavailable" : "Enable Sun visibility or Earth visibility to highlight site time windows."}</p>
-        {Object.values(horizonErrors).some(Boolean) && <button type="button" onClick={() => { setHorizonErrors({}); setAttempt(value => value + 1); }}>Retry terrain horizons</button>}
+        {sites.length === 0 && <p>No polar sites enabled. Switch on a site in the Landing sites menu.</p>}
+        {sites.some(site => Boolean(horizonErrors[site.id])) && <button type="button" onClick={() => { setHorizonErrors({}); setAttempt(value => value + 1); }}>Retry terrain horizons</button>}
         {sites.some(site => !horizons[site.id] && !horizonErrors[site.id]) && <p role="status">Calculating LOLA terrain horizons...</p>}
         <div className="map-site-timelines">
           {rows.map(({ site, sun, earth, passes, runs, ready }) => <div className="map-site-time-row" key={site.id}>

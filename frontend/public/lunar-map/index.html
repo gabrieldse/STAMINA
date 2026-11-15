@@ -965,6 +965,7 @@ window.addEventListener("message", (event) => {
     draw();
   }
   if (data?.type === "stamina:add-mode") setAddMode(data.enabled);
+  if (data?.type === "stamina:default-view") resetView();
   // Comparison grid on/off: { siteIds, halfSizeM, insetRight } or null
   if (data?.type === "stamina:compare") {
     compare = data.compare;

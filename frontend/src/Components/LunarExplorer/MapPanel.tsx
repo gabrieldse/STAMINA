@@ -13,7 +13,8 @@ import type {
 } from "../../types/temperature";
 
 import { COMPARE_LIMIT, LANDING_SITES, isOnPolarMap } from "../../types/sites";
-import type { CompareSite, LandingSite } from "../../types/sites";
+import type { CompareSite, LandingSite, VisiblePolarSite, InitialMapSite } from "../../types/sites";
+import CircularSiteMap from "./CircularSiteMap";
 
 import { downloadJson } from "../../utils/download";
 
@@ -34,6 +35,8 @@ type MapView = "2d" | "3d";
 const CROP_SIZES_KM = [10, 20, 40, 80];
 
 type Props = {
+  initialSite?: InitialMapSite;
+  onMapArea: () => void;
   date: string;
   positions: BodyPositions | null;
   positionStatus: string;
@@ -50,6 +53,7 @@ type Props = {
   comparing: boolean;
   onCompareClose: () => void;
   onCompareSitesChange: (sites: CompareSite[]) => void;
+  onVisibleSitesChange?: (sites: VisiblePolarSite[]) => void;
 };
 
 // Marker sent to the map viewer.
@@ -116,6 +120,8 @@ function isViewerMessage(data: unknown): data is ViewerMessage {
 }
 
 export default function MapPanel({
+  initialSite,
+  onMapArea,
   positions,
   positionStatus,
   onVisibilityReady,
@@ -129,10 +135,14 @@ export default function MapPanel({
   comparing,
   onCompareClose,
   onCompareSitesChange,
+  onVisibleSitesChange,
 }: Props) {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [viewerReady, setViewerReady] = useState(false);
   const [visibilityStatus, setVisibilityStatus] = useState("");
+  const [mapCenter, setMapCenter] = useState<{ id: string; latitude: number; longitude: number; name: string } | null>(initialSite ? { ...initialSite, id: "initial-site" } : null);
+  const globalCentered = mapCenter !== null;
+  const globalMapActive = globalCentered && !comparing;
   const sunVisible = Boolean(filters.sunVisibility?.enabled);
   const earthVisible = Boolean(filters.earthVisibility?.enabled);
   const terrainEnabled = Boolean(filters.terrain?.enabled);
@@ -141,7 +151,7 @@ export default function MapPanel({
   }, [viewerReady, terrainEnabled]);
   useEffect(() => {
     if (!viewerReady) return;
-    if (!sunVisible && !earthVisible) {
+    if ((!sunVisible && !earthVisible) || globalMapActive) {
       onVisibilityReady?.(true);
       postToViewer({ type: "stamina:visibility-mask", config: null });
       setVisibilityStatus("");
@@ -175,15 +185,15 @@ export default function MapPanel({
       }
     }, 150);
     return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [viewerReady, positions, sunVisible, earthVisible, onVisibilityReady, playing]);
+  }, [viewerReady, positions, sunVisible, earthVisible, onVisibilityReady, playing, globalMapActive]);
   const elevationStatus = [positions?.utc.replace("T", " ").replace("Z", " UTC"), visibilityStatus, positionStatus].filter(Boolean).join(" | ");
   // Site whose info card the user closed; it reopens for the next site.
   const [closedInfoId, setClosedInfoId] = useState<string | null>(null);
   const infoSite = selectedSite?.details;
 
   // Points clicked on the map ("Custom" group) and sites switched off.
-  const [customSites, setCustomSites] = useState<LunarSite[]>([]);
-  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => new Set());
+  const [customSites, setCustomSites] = useState<LunarSite[]>(initialSite ? [{ ...initialSite, id: "initial-site" }] : []);
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => new Set(initialSite ? LANDING_SITES.map(site => site.id) : []));
   const customRef = useRef(customSites);
   useEffect(() => {
     customRef.current = customSites;
@@ -214,9 +224,10 @@ export default function MapPanel({
     setCustomSites(customRef.current);
     setAddMode(false);
     onSiteSelect(point);
+    return point;
   }
   // "Add by coordinates": validates, normalises the longitude and adds the point.
-  function addPointAt(latitude: number, longitude: number, name: string): string | null {
+  function addPointAt(latitude: number, longitude: number, name: string, centerMap: boolean): string | null {
     if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
       return "Latitude must be between -90 and 90.";
     }
@@ -224,7 +235,8 @@ export default function MapPanel({
       return "Longitude must be between -180 and 360.";
     }
     const lon = longitude > 180 ? longitude - 360 : longitude;
-    addPoint(latitude, lon, name ? { name } : {});
+    const point = addPoint(latitude, lon, name ? { name } : {});
+    if (centerMap) centerOn2D(point);
     return null;
   }
 
@@ -303,6 +315,14 @@ export default function MapPanel({
   useEffect(() => {
     if (viewerReady) postToViewer({ type: "stamina:sites", sites: mapSites });
   }, [viewerReady, mapSites]);
+
+  // Share the menu's enabled polar sites with the visibility timelines too.
+  const visiblePolarSites = useMemo<VisiblePolarSite[]>(() => mapSites
+    .filter(site => site.latitude <= -80)
+    .map(({ id, name, latitude, longitude }) => ({ id, name, latitude, longitude })), [mapSites]);
+  useEffect(() => {
+    onVisibleSitesChange?.(visiblePolarSites);
+  }, [visiblePolarSites, onVisibleSitesChange]);
 
   useEffect(() => {
     if (viewerReady) postToViewer({ type: "stamina:add-mode", enabled: addMode });
@@ -395,14 +415,27 @@ export default function MapPanel({
     setCameraRequest({ ...target, nonce: nonceRef.current });
   }
 
-  // Eye button: centre the 2D map on a polar site, otherwise fly the globe to it.
-  function goTo(id: string) {
-    const onPolarMap =
-      LANDING_MAP_SITES.some((site) => site.id === id) ||
-      customSites.some((site) => site.id === id && (site.latitude ?? 0) <= -80);
+  function centerOn2D(site: LunarSite) {
+    if (site.latitude == null || site.longitude == null) return;
+    setMapCenter({ id: site.id, latitude: site.latitude, longitude: site.longitude, name: site.name });
+    setView("2d");
+    setRotating(false);
+    if (comparing) onCompareClose();
+  }
 
-    if (activeView === "2d" && onPolarMap) {
-      postToViewer({ type: "stamina:center-on", siteId: id });
+  function defaultMap() {
+    setMapCenter(null);
+    setView("2d");
+    setRotating(false);
+    if (comparing) onCompareClose();
+    if (viewerReady) postToViewer({ type: "stamina:default-view" });
+  }
+
+  // Eye button: keep the current dimensional view and center it on the site.
+  function goTo(id: string) {
+    if (activeView === "2d") {
+      const site = LANDING_SITES.find(site => site.id === id) ?? customSites.find(site => site.id === id);
+      if (site) centerOn2D(site);
       return;
     }
     switchView("3d");
@@ -446,6 +479,7 @@ export default function MapPanel({
 
   // Custom points: rename, delete, export
   function renameSite(id: string, name: string) {
+    if (mapCenter?.id === id) setMapCenter({ ...mapCenter, name });
     setCustomSites((sites) =>
       sites.map((site) => (site.id === id ? { ...site, name } : site))
     );
@@ -453,6 +487,7 @@ export default function MapPanel({
   }
 
   function deleteSite(id: string) {
+    if (mapCenter?.id === id) defaultMap();
     setCustomSites((sites) => sites.filter((site) => site.id !== id));
     if (hiddenIds.has(id)) {
       const next = new Set(hiddenIds);
@@ -534,24 +569,36 @@ export default function MapPanel({
           </>
         ) : (
           <>
-            <strong>{activeView === "3d" ? "Moon" : "Lunar South Pole"}</strong>
+            <strong>{activeView === "3d" ? "Moon" : mapCenter ? mapCenter.name : "Lunar South Pole"}</strong>
             <span>
               {activeView === "3d"
                 ? "LROC WAC mosaic · Apollo, Artemis III and custom sites"
-                : `${temperature.enabled ? "Diviner surface temperature" : "LOLA relief"} · 80°S to the pole`}
+                : globalCentered ? `LROC WAC imagery | centered at ${mapCenter.latitude.toFixed(3)}°, ${mapCenter.longitude.toFixed(3)}°`
+                : `${temperature.enabled ? "Diviner surface temperature" : "LOLA relief"}${mapCenter ? " | site-centered 2D" : " · 80°S to the pole"}`}
             </span>
+            <div className="map-center-actions">
+              <button type="button" disabled={selectedSite?.latitude == null || selectedSite.longitude == null} onClick={() => selectedSite && centerOn2D(selectedSite)}>Center 2D on selected site</button>
+              {mapCenter && <button type="button" onClick={defaultMap}>Default south pole</button>}
+            </div>
           </>
         )}
       </div>
 
       <div className="map-workspace map-workspace-embed">
+        <button className="map-area-button" type="button" onClick={onMapArea} aria-haspopup="dialog" title="Choose coordinates or use the default south-pole map">Map area</button>
         {/* The 2D map stays loaded in 3D: it still supplies site temperatures. */}
         <iframe
           ref={frameRef}
-          className={"lunar-map-frame" + (activeView === "3d" ? " map-view-hidden" : "")}
+          className={"lunar-map-frame" + (activeView === "3d" || (globalCentered && !comparing) ? " map-view-hidden" : "")}
           src="/lunar-map/index.html?embed=1"
           title="South pole surface temperature map"
         />
+
+        {globalCentered && !comparing && activeView === "2d" && (
+            <CircularSiteMap key={mapCenter.id} center={mapCenter} sites={globeSites} selectedId={selectedId}
+              onPick={pickOnGlobe} onPlace={(latitude, longitude) => addPoint(latitude, longitude)}
+              addMode={addMode} />
+        )}
 
         {globeOpened && (
           <div className={activeView === "3d" ? "" : "map-view-hidden"}>
@@ -579,7 +626,7 @@ export default function MapPanel({
               onClick={() => switchView(option)}
             >
               <img src={`/globe/thumb_${option}.png`} alt="" />
-              {option === "2d" ? "2D pole" : "3D globe"}
+              {option === "2d" ? mapCenter ? "2D site" : "2D pole" : "3D globe"}
             </button>
           ))}
         </div>}
@@ -613,9 +660,10 @@ export default function MapPanel({
       </div>
 
       {/* Map notes: contour legend and the Sun/Earth visibility mask status */}
-      {(terrainEnabled || elevationStatus) && (
+      {(terrainEnabled || elevationStatus || globalCentered) && (
         <div className="map-footer">
-          {terrainEnabled && <span>LOLA contours: 500 m intervals · Bold: 1,000 m · Heights relative to the lunar reference sphere</span>}
+          {globalCentered && activeView === "2d" && !comparing && <span>LROC imagery. Terrain visibility, contour and Diviner layers cover the south-pole map; use Default south pole to view them.</span>}
+          {terrainEnabled && (!globalCentered || comparing) && <span>LOLA contours: 500 m intervals · Bold: 1,000 m · Heights relative to the lunar reference sphere</span>}
           {elevationStatus && <span role="status">{activeView === "3d" && (sunVisible || earthVisible) ? "Visibility mask is shown in the 2D polar map. " : ""}{elevationStatus}</span>}
         </div>
       )}

@@ -81,3 +81,18 @@
 .globe-3d.adding canvas {
   cursor: crosshair;
 }
+
+.map-center-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.map-center-actions button {
+  padding: 5px 8px;
+  border: 1px solid #666;
+  border-radius: 6px;
+  background: #252528;
+  color: #eee;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.map-center-actions button:disabled { opacity: .45; cursor: default; }
+.explorer-map .map-header { flex-wrap: wrap; }
+.map-area-button { position: absolute; top: 12px; left: 12px; z-index: 4; padding: 8px 12px; border: 1px solid #697785; border-radius: 6px; background: #242a32; color: #eee; font: inherit; font-size: 12px; cursor: pointer; }
