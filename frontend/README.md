@@ -19,7 +19,7 @@ uv run lola_2d/diviner_web.py --no-serve   # downloads ~210 MB from Moon Trek on
 ```
 
 Then `npm run dev` as usual. The viewer also runs on its own with
-`uv run lola_2d/diviner_web.py` (http://localhost:8000).
+`uv run lola_2d/diviner_web.py` (http://localhost:8001; port 8000 is the scientific API).
 
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

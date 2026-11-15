@@ -7,6 +7,8 @@ export type BodyPositions = { sun: number[]; earth: number[]; utc: string };
 type PositionSeries = { times: string[]; sun: number[][]; earth: number[][] };
 type Props = Omit<ComponentProps<typeof MapPanel>, "positions" | "positionStatus"> & { durationDays: number };
 const utc = (value: string) => value.replace("T", " ").replace(":00Z", " UTC");
+// No answer from the backend (not started, or another server on its port behind the /api proxy)
+const API_DOWN = "Scientific API not running. From the repository root run: python -m uvicorn backend.api:app --port 8000, then Retry.";
 
 function elevation(vector: number[], latitude: number, longitude: number) {
   const lat = latitude * Math.PI / 180, lon = longitude * Math.PI / 180;
@@ -39,13 +41,15 @@ function TimelineWindow({ durationDays, ...props }: Props) {
         const response = await fetch(`${base}/api/position-timeline?date=${encodeURIComponent(props.date)}&durationDays=${durationDays}`, { signal: controller.signal });
         if (!response.ok) {
           const body = await response.json().catch(() => null);
-          throw new Error(typeof body?.detail === "string" ? body.detail : "Timeline unavailable. Check the date, duration and scientific API.");
+          if (typeof body?.detail === "string") throw new Error(body.detail);
+          throw new Error([404, 502, 504].includes(response.status) ? API_DOWN : "Timeline unavailable. Check the date, duration and scientific API.");
         }
         const data: PositionSeries = await response.json();
         if (!data.times?.length || data.sun?.length !== data.times.length || data.earth?.length !== data.times.length) throw new Error("Incomplete ephemeris response.");
         if (!controller.signal.aborted) setSeries(data);
       } catch (cause) {
-        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Timeline unavailable.");
+        // fetch rejects with a TypeError when nothing answers at all
+        if (!controller.signal.aborted) setError(cause instanceof TypeError ? API_DOWN : cause instanceof Error ? cause.message : "Timeline unavailable.");
       }
     }
     void load();
