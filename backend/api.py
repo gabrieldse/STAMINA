@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field, ConfigDict
 
 from backend.horizon import body_visibility, profile
-from backend.visibility_map import visibility_map
+from backend.visibility_map import terrain_overlay_map, visibility_map
 from backend.visibility_kernel import NUMBA_AVAILABLE
 from SMEData.kernel_loaders import load_kernels
 from backend.custom_filter_engine import CustomFilterRule, evaluate_custom_filters
@@ -25,6 +25,22 @@ class VisibilityMapRequest(BaseModel):
     center: list[float] = Field(default_factory=lambda: [-90.0, 0.0], min_length=2, max_length=2)
     size: int = Field(default=768, ge=32, le=2048, strict=True)
     encoding: Literal["array", "bitset"] = "array"
+
+
+class TerrainMapRequest(BaseModel):
+    center: list[float] = Field(min_length=2, max_length=2)
+    size: int = Field(default=768, ge=128, le=1024, strict=True)
+
+
+@app.post("/api/terrain-map")
+def map_terrain(request: TerrainMapRequest):
+    if not np.isfinite(request.center).all() or not -90 <= request.center[0] <= 90 or not -180 <= request.center[1] <= 360:
+        raise HTTPException(422, "Invalid map center coordinates.")
+    center = (request.center[0], ((request.center[1]+180)%360)-180)
+    try:
+        return terrain_overlay_map(request.size, center)
+    except ValueError as exc:
+        raise HTTPException(503, str(exc)) from exc
 
 
 @app.post("/api/visibility-map")

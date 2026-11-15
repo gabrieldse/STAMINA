@@ -32,6 +32,8 @@ The map site timelines use hourly samples and `/api/horizon` profiles with the
 same visibility predicate. `/api/visibility-map` traces each selected body's
 line of sight against the local polar LOLA DEM or global LOLA terrain window,
 including lunar curvature and parallax.
+`/api/terrain-map` returns a compact shaded-relief overlay for coordinate-centered
+maps, using the same cached LOLA elevation window.
 The map first displays a 384 by 384 preview, then refines to 1536 by 1536
 (396 m/cell, versus the previous 2375 m/cell). Playback uses 768 by 768
 (792 m/cell) and waits for each result. The API supports up to 2048 by 2048.

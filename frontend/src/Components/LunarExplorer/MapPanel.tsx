@@ -69,6 +69,7 @@ type MapSite = {
 
 const CUSTOM_COLOR = "#ff9f43";
 type VisibilityMask = { size: number; radiusM: number; resolutionM: number; coveragePct: number; encoding: "bitset-msb"; visiblePacked: string; coveragePacked: string };
+type TerrainOverlay = { size: number; radiusM: number; coveragePct: number; shadePacked: string; coveragePacked: string };
 
 // Artemis III regions share names with craters (Haworth, Nobile, ...) but are
 // separate areas next to them, so their map labels say "A3".
@@ -139,6 +140,7 @@ export default function MapPanel({
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [viewerReady, setViewerReady] = useState(false);
   const [visibilityMask, setVisibilityMask] = useState<VisibilityMask | null>(null);
+  const [terrainOverlay, setTerrainOverlay] = useState<TerrainOverlay | null>(null);
   const [mapCenter, setMapCenter] = useState<{ id: string; latitude: number; longitude: number; name: string } | null>(initialSite ? { ...initialSite, id: "initial-site" } : null);
   const globalCentered = mapCenter !== null;
   const globalMapActive = globalCentered && !comparing;
@@ -212,6 +214,35 @@ export default function MapPanel({
   const nonceRef = useRef(0);
   // The comparison grid replaces the map with 2D cells, so it shows the 2D view.
   const activeView: MapView = comparing ? "2d" : view;
+
+  useEffect(() => {
+    if (!terrainEnabled || !globalMapActive || activeView !== "2d" || !mapCenter) {
+      setTerrainOverlay(null);
+      return;
+    }
+    const controller = new AbortController();
+    setTerrainOverlay(null);
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/terrain-map`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, signal: controller.signal,
+          body: JSON.stringify({ center: [mapCenter.latitude, mapCenter.longitude], size: 768 }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(apiErrorMessage(data, response.status));
+        const expected = Math.ceil(data.size*data.size/8);
+        if (!Number.isInteger(data.size) || data.size < 128 || data.size > 1024 ||
+          typeof data.shadePacked !== "string" || atob(data.shadePacked).length !== data.size*data.size ||
+          typeof data.coveragePacked !== "string" || atob(data.coveragePacked).length !== expected) {
+          throw new Error("Incomplete terrain overlay.");
+        }
+        if (!controller.signal.aborted) setTerrainOverlay(data as TerrainOverlay);
+      } catch (cause) {
+        if (!controller.signal.aborted) console.error("Terrain overlay unavailable:", cause);
+      }
+    }, 100);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [terrainEnabled, globalMapActive, activeView, mapCenter]);
 
   function addPoint(latitude: number, longitude: number, values: Partial<LunarSite> = {}) {
     const point: LunarSite = {
@@ -596,7 +627,7 @@ export default function MapPanel({
         />
 
         {globalCentered && !comparing && activeView === "2d" && (
-            <CircularSiteMap key={mapCenter.id} center={mapCenter} sites={globeSites} selectedId={selectedId} visibilityMask={visibilityMask}
+            <CircularSiteMap key={mapCenter.id} center={mapCenter} sites={globeSites} selectedId={selectedId} visibilityMask={visibilityMask} terrainOverlay={terrainOverlay}
               onPick={pickOnGlobe} onPlace={(latitude, longitude) => addPoint(latitude, longitude)}
               addMode={addMode} />
         )}

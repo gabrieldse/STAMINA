@@ -220,33 +220,47 @@ function setAddMode(on) {
 // Plain Moon base map from LOLA: hillshade (uint8) and elevation (int16 m, -32768 = no data).
 let base = null;
 let terrainOverlayEnabled = false, terrainContours = null;
-// Fallback when the contour tiles (lola_2d/build_terrain_tiles.py) aren't generated:
-// marching squares over the elevation grid, sampled to at most ~1024 cells across
-// so the 2048 px grid doesn't stall the page.
+// Fallback when contour tiles aren't generated. Build at half the old sampling
+// density in idle slices so toggling the layer never locks map navigation.
 function buildTerrainContours() {
   if (!base || terrainContours) return;
-  const minor = new Path2D(), major = new Path2D(), n = meta.size, k = Math.max(1, Math.round(n / 1024));
-  for (let row=0; row<n-k; row+=k) for (let col=0; col<n-k; col+=k) {
-    const i=row*n+col, h=[base.elev[i],base.elev[i+k],base.elev[i+k*n+k],base.elev[i+k*n]];
-    if (h.includes(-32768)) continue;
-    const corners=[[col+.5,row+.5],[col+k+.5,row+.5],[col+k+.5,row+k+.5],[col+.5,row+k+.5]];
-    for (let level=Math.ceil(Math.min(...h)/500)*500; level<Math.max(...h); level+=500) {
-      const points=[];
-      for (let a=0; a<4; a++) {
-        const b=(a+1)%4;
-        if ((h[a]>level)===(h[b]>level)) continue;
-        const t=(level-h[a])/(h[b]-h[a]);
-        points.push([corners[a][0]+t*(corners[b][0]-corners[a][0]),corners[a][1]+t*(corners[b][1]-corners[a][1])]);
+  const minor = new Path2D(), major = new Path2D(), n = meta.size, k = Math.max(1, Math.ceil(n / 512));
+  terrainContours = { minor, major, building: true };
+  let row = 0;
+  const schedule = callback => window.requestIdleCallback
+    ? requestIdleCallback(callback, { timeout: 50 })
+    : setTimeout(() => callback({ timeRemaining: () => 0 }), 0);
+  const buildSlice = deadline => {
+    const started = performance.now();
+    while (row < n-k && (performance.now()-started < 7 || deadline.timeRemaining() > 2)) {
+      for (let col=0; col<n-k; col+=k) {
+        const i=row*n+col, h=[base.elev[i],base.elev[i+k],base.elev[i+k*n+k],base.elev[i+k*n]];
+        if (h.includes(-32768)) continue;
+        const corners=[[col+.5,row+.5],[col+k+.5,row+.5],[col+k+.5,row+k+.5],[col+.5,row+k+.5]];
+        for (let level=Math.ceil(Math.min(...h)/500)*500; level<Math.max(...h); level+=500) {
+          const points=[];
+          for (let a=0; a<4; a++) {
+            const b=(a+1)%4;
+            if ((h[a]>level)===(h[b]>level)) continue;
+            const t=(level-h[a])/(h[b]-h[a]);
+            points.push([corners[a][0]+t*(corners[b][0]-corners[a][0]),corners[a][1]+t*(corners[b][1]-corners[a][1])]);
+          }
+          const path=level%1000===0 ? major : minor;
+          if (points.length===4 && (h.reduce((a,b)=>a+b,0)/4>level)!==(h[0]>level)) points.push(points.shift());
+          for (let p=0; p+1<points.length; p+=2) {
+            path.moveTo(...points[p]); path.lineTo(...points[p+1]);
+          }
+        }
       }
-      const path=level%1000===0 ? major : minor;
-      // Resolve saddle cells consistently using the cell-centre elevation.
-      if (points.length===4 && (h.reduce((a,b)=>a+b,0)/4>level)!==(h[0]>level)) points.push(points.shift());
-      for (let p=0; p+1<points.length; p+=2) {
-        path.moveTo(...points[p]); path.lineTo(...points[p+1]);
-      }
+      row += k;
     }
-  }
-  terrainContours={minor,major};
+    if (row < n-k) schedule(buildSlice);
+    else {
+      terrainContours.building = false;
+      if (terrainOverlayEnabled) draw();
+    }
+  };
+  schedule(buildSlice);
 }
 function drawTerrainContours(c,rpx) {
   if (!terrainOverlayEnabled) return;
