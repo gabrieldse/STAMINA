@@ -18,8 +18,14 @@ which are generated and not committed. From the repository root, once:
 uv run lola_2d/diviner_web.py --no-serve   # downloads ~210 MB from Moon Trek once, writes ~77 MB of grids (loaded on demand)
 ```
 
-Then `npm run dev` as usual. The viewer also runs on its own with
-`uv run lola_2d/diviner_web.py` (http://localhost:8001; port 8000 is the scientific API).
+Then `npm run dev`: it starts the scientific API (port 8000, used by the
+timeline and the site analysis) and the site together, and Ctrl+C stops both.
+It runs the API with `uv` when installed (requirements are installed for you),
+otherwise with `py`/`python3` after `pip install -r requirements.txt`; an API
+already running on port 8000 is reused. `npm run dev:web` starts only the site.
+
+The map viewer also runs on its own with `uv run lola_2d/diviner_web.py`
+(http://localhost:8001; port 8000 is the scientific API).
 
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
