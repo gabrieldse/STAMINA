@@ -26,7 +26,7 @@ export function parseConfiguration(data: unknown): ImportedConfiguration {
       const state = data.filters[definition.id];
       if (!isObject(state) || typeof state.enabled !== "boolean") throw new Error(`Missing or invalid ${definition.label} settings.`);
       const value = state.value;
-      const valid = definition.type === "toggle" ? typeof value === "boolean"
+      const valid = (definition.type === "toggle" || definition.type === "visibility") ? typeof value === "boolean"
         : definition.type === "select" ? definition.options?.some(option => option.value === value)
         : typeof value === "number" && Number.isFinite(value) && value >= (definition.min ?? -Infinity) && value <= (definition.max ?? Infinity);
       if (!valid) throw new Error(`Invalid value for ${definition.label}.`);

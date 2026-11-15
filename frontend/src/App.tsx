@@ -3,7 +3,9 @@ import { useState } from "react";
 
 import LunarExplorer from "./Components/LunarExplorer/LunarExplorer";
 import SiteDemo from "./Components/SiteDemo/SiteDemo";
+import MapSetup from "./Components/WelcomeModal/MapSetup";
 import WelcomeModal from "./Components/WelcomeModal/WelcomeModal";
+import type { InitialMapSite } from "./types/sites";
 
 import "./App.css";
 
@@ -11,15 +13,19 @@ type AppMode = "explore" | "tutorial";
 
 export default function App() {
   const [mode, setMode] = useState<AppMode>("explore");
-  const [showWelcome, setShowWelcome] = useState(true);
+  const [dialog, setDialog] = useState<"map" | "help" | null>("help");
+  const [mapChoice, setMapChoice] = useState<{ site: InitialMapSite | null; generation: number } | null>(null);
 
   function startTutorial() {
-    setShowWelcome(false);
+    if (!mapChoice) {
+      setMapChoice({ site: null, generation: 1 });
+    }
+    setDialog(null);
     setMode("tutorial");
   }
 
   function exploreFreely() {
-    setShowWelcome(false);
+    setDialog(mapChoice ? null : "map");
     setMode("explore");
   }
 
@@ -55,12 +61,12 @@ export default function App() {
         <div className="stamina-app-actions">
 
           <span className="stamina-app-mode">
-            Lunar South Pole
+            Lunar surface
           </span>
 
           <button
             type="button"
-            onClick={() => setShowWelcome(true)}
+            onClick={() => setDialog("help")}
           >
             Help
           </button>
@@ -69,8 +75,9 @@ export default function App() {
             type="button"
             className="stamina-app-tutorial-button"
             onClick={startTutorial}
+            disabled={!mapChoice}
           >
-            Site Demo ↗
+            Site Demo
           </button>
 
         </div>
@@ -78,7 +85,7 @@ export default function App() {
 
       {/* MAIN SCIENTIFIC WORKSPACE */}
       <div className="stamina-workspace">
-        <LunarExplorer />
+        {mapChoice && <LunarExplorer key={mapChoice.generation} initialSite={mapChoice.site ?? undefined} onMapArea={() => setDialog("map")} />}
       </div>
 
       {/* APPLICATION STATUS BAR */}
@@ -91,12 +98,13 @@ export default function App() {
       </footer>
 
       {/* WELCOME MODAL */}
-      {mode === "tutorial" && !showWelcome && <SiteDemo onClose={exploreFreely} />}
-      {showWelcome && (
-        <WelcomeModal
-          onStartTutorial={startTutorial}
-          onExplore={exploreFreely}
-        />
+      {mode === "tutorial" && !dialog && <SiteDemo onClose={exploreFreely} />}
+      {dialog === "help" && <WelcomeModal onStartTutorial={startTutorial} onExplore={exploreFreely} />}
+      {dialog === "map" && (
+        <MapSetup onChoose={site => {
+          setMapChoice(previous => ({ site, generation: (previous?.generation ?? 0)+1 }));
+          setDialog(null);
+        }} onCancel={mapChoice ? () => setDialog(null) : undefined} />
       )}
 
     </div>

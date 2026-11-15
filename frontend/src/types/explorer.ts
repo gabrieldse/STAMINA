@@ -9,7 +9,7 @@ export type FilterDefinition = {
   label: string;
   description: string;
 
-  type: "slider" | "toggle" | "select";
+  type: "slider" | "toggle" | "select" | "visibility";
 
   min?: number;
   max?: number;

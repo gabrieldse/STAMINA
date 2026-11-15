@@ -22,7 +22,7 @@ import type {
 import { DEFAULT_TEMPERATURE_CONFIG } from "../../types/temperature";
 
 import { COMPARE_LIMIT } from "../../types/sites";
-import type { CompareSite } from "../../types/sites";
+import type { CompareSite, InitialMapSite } from "../../types/sites";
 
 
 import type {
@@ -48,13 +48,13 @@ function formatKelvin(value: number | null | undefined) {
     : "—";
 }
 
-export default function LunarExplorer() {
+export default function LunarExplorer({ initialSite, onMapArea }: { initialSite?: InitialMapSite; onMapArea: () => void }) {
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
   const analysisVersion = useRef(0);
   // Selected lunar landing site
   const [selectedSite, setSelectedSite] =
-    useState<LunarSite | null>(null);
+    useState<LunarSite | null>(initialSite ? { ...initialSite, id: "initial-site" } : null);
 
   // Comparison grid over the map, and the sites it can show
   const [comparing, setComparing] = useState(false);
@@ -280,6 +280,8 @@ export default function LunarExplorer() {
 
         {/* INTERACTIVE MAP */}
         <MapTimeline
+            initialSite={initialSite}
+            onMapArea={onMapArea}
             date={date}
             durationDays={durationDays}
             selectedSite={selectedSite}
@@ -493,7 +495,7 @@ export default function LunarExplorer() {
               <span>{instantMode ? "Sun at observation time" : "Solar availability"}</span>
 
               <strong>
-                {instantMode && isComputed ? (result?.sunlightPercent === 100 ? "Above threshold" : "Below threshold") : formatMetric(
+                {instantMode && isComputed ? (result?.sunlightPercent === 100 ? "Visible" : "Terrain-obstructed") : formatMetric(
                   result?.sunlightPercent,
                   "%"
                 )}
@@ -505,7 +507,7 @@ export default function LunarExplorer() {
               <span>{instantMode ? "Earth at observation time" : "Earth visibility"}</span>
 
               <strong>
-                {instantMode && isComputed ? (result?.earthVisibilityPercent === 100 ? "Above threshold" : "Below threshold") : formatMetric(
+                {instantMode && isComputed ? (result?.earthVisibilityPercent === 100 ? "Visible" : "Terrain-obstructed") : formatMetric(
                   result?.earthVisibilityPercent,
                   "%"
                 )}

@@ -386,3 +386,6 @@ div.site-list-item {
   font-weight: 700;
   cursor: pointer;
 }
+
+.site-coords .site-center-option { flex-direction: row; align-items: center; gap: 6px; }
+.site-coords .site-center-option input { width: auto; }

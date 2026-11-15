@@ -1,4 +1,5 @@
 
+import { apiErrorMessage } from "./apiError";
 import type {
   FilterStates,
   LunarSite,
@@ -80,9 +81,7 @@ export async function analyzeLunarSite(
 
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    throw new Error(
-      typeof body?.detail === "string" ? body.detail : `Scientific API error: ${response.status}. Check the site, date and filters.`
-    );
+    throw new Error(apiErrorMessage(body, response.status));
   }
 
   return (await response.json()) as ScientificResult;

@@ -1,5 +1,44 @@
 # React + TypeScript + Vite
 
+## Choose the map before exploring
+
+On opening the application, no map or scientific workspace is mounted. The
+user must choose one of two options: provide coordinates and create a circular
+2D map centered exactly on that point, or explicitly use the default south-pole
+map. Both poles, longitudes near 180 degrees and 0..360 east longitudes are
+supported. The custom circular map uses a local stereographic projection with
+an initial ten-degree radius. Drag to pan, use the mouse wheel to zoom around
+the cursor, and double-click or use Reset view to return to the chosen center.
+Navigation uses the same projected-coordinate rules as the default polar map.
+During gestures the previous image is transformed immediately, then refreshed
+at the new view once the interaction ends.
+
+Custom maps use LROC WAC imagery, first the bundled offline mosaic and then
+visible NASA Moon Trek tiles. Markers and surface clicks use the same local
+projection; clicks outside the circle cannot add points. Sun and Earth visibility
+use the south-pole LOLA DEM or fetch a cached regional window from NASA's global
+LOLA DEM for other lunar locations. Contours and Diviner temperature layers
+remain specific to the default south-pole map. Custom sites and map center survive
+date changes. **Map area**, at the upper-left inside the map, opens the coordinate
+or default-map choice, with Cancel to keep the current area. **Help** opens the
+original Site Demo / Free Exploration menu, without emoji icons.
+
+Browser regression (local frontend/API running, Microsoft Edge installed):
+
+```powershell
+uv pip install --python .venv/Scripts/python.exe playwright
+.venv/Scripts/python.exe -B frontend/tests/site-centered.browser.py
+.venv/Scripts/python.exe -B frontend/tests/map-controls.browser.py
+```
+
+It checks the initial map gate, empty coordinate validation, actual surface
+picks inside circular maps at equatorial, north-pole, south-pole and dateline
+sites, rejection of clicks outside the circle, date persistence and the explicit
+default choice. The controls check covers Help, demo/free exploration, the Map
+area menu, dragging without adding a point, cursor-anchored zoom verified through
+exported coordinates, and reset. Projection and navigation geometry are tested
+with Node's test runner.
+
 ## Lunar map data
 
 For detailed terrain when zooming, run `py lola_2d/build_terrain_tiles.py`

@@ -28,7 +28,7 @@ type Props = {
   addMode: boolean;
   onToggleAddMode: () => void;
   // Adds a custom point at typed coordinates; returns an error message or null.
-  onAddCoordinates: (latitude: number, longitude: number, name: string) => string | null;
+  onAddCoordinates: (latitude: number, longitude: number, name: string, centerMap: boolean) => string | null;
   // Eye button: move the view to the site.
   onGoTo: (id: string) => void;
   // 3D globe controls
@@ -78,6 +78,7 @@ export default function SiteList({
   const [coordsOpen, setCoordsOpen] = useState(false);
   const [coords, setCoords] = useState({ lat: "", lon: "", name: "" });
   const [coordsError, setCoordsError] = useState("");
+  const [centerMap, setCenterMap] = useState(true);
 
   function submitCoordinates() {
     const latitude = Number(coords.lat), longitude = Number(coords.lon);
@@ -85,7 +86,7 @@ export default function SiteList({
       setCoordsError("Enter both latitude and longitude.");
       return;
     }
-    const error = onAddCoordinates(latitude, longitude, coords.name.trim());
+    const error = onAddCoordinates(latitude, longitude, coords.name.trim(), centerMap);
     setCoordsError(error ?? "");
     if (!error) {
       setCoords({ lat: "", lon: "", name: "" });
@@ -195,10 +196,14 @@ export default function SiteList({
                 onChange={(e) => setCoords({ ...coords, name: e.target.value })}
               />
               <small className="site-coords-hint">
-                Degrees, north and east positive. South of 80°S shows on the 2D map.
+                Degrees, north and east positive. Coordinates anywhere on the Moon.
               </small>
+              <label className="site-center-option">
+                <input type="checkbox" checked={centerMap} onChange={event => setCenterMap(event.target.checked)} />
+                Center the 2D map here
+              </label>
               {coordsError && <small className="site-coords-error" role="alert">{coordsError}</small>}
-              <button type="submit" className="site-coords-submit">Add point</button>
+              <button type="submit" className="site-coords-submit">{centerMap ? "Add & center 2D" : "Add point"}</button>
             </form>
           )}
 

@@ -261,41 +261,36 @@ function drawTerrainContours(c,rpx) {
   ctx.strokeStyle="#adfff1"; ctx.lineWidth=1.3*dpr()/scale;
   ctx.stroke(terrainContours.major); ctx.restore();
 }
-let elevationMask = null;
-let elevationNormals = null;
-function applyElevationFilter(config) {
-  elevationMask = null;
-  if (!config) { draw(); return; }
-  const n = 256, image = document.createElement("canvas");
-  image.width = image.height = n;
-  const context = image.getContext("2d"), pixels = context.createImageData(n,n);
-  // Surface normals are time-independent; reuse them during playback.
-  if (!elevationNormals) {
-    elevationNormals = new Float64Array(n*n*3);
-    for (let row=0; row<n; row++) for (let col=0; col<n; col++) {
-      const x=((col+.5)/n*2-1)*meta.radiusM, y=(1-(row+.5)/n*2)*meta.radiusM;
-      if (Math.hypot(x,y)>meta.radiusM) continue;
-      const ll=toLatLon(x,y), lat=ll.lat*Math.PI/180, lon=ll.lon*Math.PI/180;
-      elevationNormals.set([Math.cos(lat)*Math.cos(lon),Math.cos(lat)*Math.sin(lon),Math.sin(lat)], (row*n+col)*3);
-    }
+let visibilityMask = null, visibilityConfig = null;
+function applyVisibilityMask(config) {
+  if (config?.encoding === "bitset-msb") {
+    const packed = atob(config.visiblePacked), count = config.size*config.size;
+    const visible = new Uint8Array(count);
+    for (let i=0; i<count; i++) visible[i] = (packed.charCodeAt(i >> 3) >> (7-(i & 7))) & 1;
+    config = { ...config, visible };
   }
-  const bodies = ["sun", "earth"].filter(body => config[`${body}Threshold`] !== null)
-    .map(body => ({ vector: config[body], sine: Math.sin(config[`${body}Threshold`]*Math.PI/180) }));
-  const radius = meta.moonRadiusM/1000;
-  for (let i=0; i<n*n; i++) {
-    const ux=elevationNormals[i*3], uy=elevationNormals[i*3+1], uz=elevationNormals[i*3+2];
-    if (uz === 0) continue;
-    for (const body of bodies) {
-      const x=body.vector[0]-radius*ux, y=body.vector[1]-radius*uy, z=body.vector[2]-radius*uz;
-      if ((x*ux+y*uy+z*uz)/Math.hypot(x,y,z) <= body.sine) {
-        pixels.data[i*4+3]=185;
-        break;
-      }
+  visibilityConfig = config;
+  visibilityMask = null;
+  if (config && !config.pending) {
+    const image = document.createElement("canvas");
+    image.width = image.height = config.size;
+    const context = image.getContext("2d"), pixels = context.createImageData(config.size, config.size);
+    for (let i=0; i<config.visible.length; i++) {
+      // Opaque black removes obstructed areas, keeping only matching terrain.
+      if (!config.visible[i]) pixels.data[i*4+3] = 255;
     }
+    context.putImageData(pixels, 0, 0);
+    visibilityMask = image;
   }
-  context.putImageData(pixels,0,0);
-  elevationMask=image;
   draw();
+}
+function matchesVisibility(x, y) {
+  if (!visibilityConfig) return true;
+  if (visibilityConfig.pending) return false;
+  const n = visibilityConfig.size;
+  const col = Math.floor((x/meta.radiusM+1)*n/2);
+  const row = Math.floor((1-y/meta.radiusM)*n/2);
+  return col >= 0 && row >= 0 && col < n && row < n && visibilityConfig.visible[row*n+col] === 1;
 }
 let terrainMeta = null, contourMeta = null;
 const terrainTiles = new Map();
@@ -525,7 +520,6 @@ function drawMap(inCell) {
   ctx.drawImage(image, c.sx - rpx, c.sy - rpx, 2 * rpx, 2 * rpx);
   drawTerrain(c, rpx);
   if (selMask) ctx.drawImage(maskImage, c.sx - rpx, c.sy - rpx, 2 * rpx, 2 * rpx);
-  if (elevationMask) ctx.drawImage(elevationMask, c.sx-rpx, c.sy-rpx, 2*rpx, 2*rpx);
   drawTerrainContours(c,rpx);
 
   if ($("grid").checked && !inCell) {
@@ -549,6 +543,7 @@ function drawMap(inCell) {
     ctx.beginPath(); ctx.rect(frame.x, frame.y, frame.w, frame.h); ctx.clip();
     drawSites();
     drawPin();
+    drawVisibilityMask(c, rpx);
     ctx.restore();
     return;
   }
@@ -579,6 +574,17 @@ function drawMap(inCell) {
   }
   drawSites();
   drawPin();
+  drawVisibilityMask(c, rpx);
+}
+// Shared by the full polar view and each clipped comparison cell.
+function drawVisibilityMask(c, rpx) {
+  if (!visibilityConfig) return;
+  ctx.save();
+  ctx.beginPath(); ctx.arc(c.sx, c.sy, rpx, 0, 2*Math.PI); ctx.clip();
+  ctx.imageSmoothingEnabled = false;
+  if (visibilityMask) ctx.drawImage(visibilityMask, c.sx-rpx, c.sy-rpx, 2*rpx, 2*rpx);
+  else { ctx.fillStyle = "#000"; ctx.fillRect(c.sx-rpx, c.sy-rpx, 2*rpx, 2*rpx); }
+  ctx.restore();
 }
 function drawPin() {
   if (!pinned) return;
@@ -786,6 +792,7 @@ function updateReadout(ev) {
   lastPointer = ev;
   const w = toWorld(ev.offsetX * dpr(), ev.offsetY * dpr());
   if (Math.hypot(w.x, w.y) > meta.radiusM) { $("rT").textContent = "–"; $("rPos").textContent = "Outside the 80°S cap"; return; }
+  if (!matchesVisibility(w.x, w.y)) { $("rT").textContent = visibilityConfig?.pending ? "Calculating visibility..." : "Outside visible area"; $("rPos").textContent = fmtPos(toLatLon(w.x, w.y), w.x, w.y); return; }
   if (!showTemperature() && base) {
     const e = base.elev[pixelIndex(w.x, w.y)];
     $("rT").textContent = e === undefined || e === -32768 ? "no data" : `${e.toLocaleString("en")} m · elevation`;
@@ -803,6 +810,7 @@ function updateReadout(ev) {
 }
 const COLUMNS = [["summer", ["summer"]], ["winter", ["winter"]], ["annual", ["summer", "winter"]]];
 async function pin(x, y, siteId = null) {
+  if (!matchesVisibility(x, y)) return;
   pinned = { x, y, siteId };
   const { lat, lon } = toLatLon(x, y);
   const temperatures = {};  // season -> statistic -> kelvin (null = no data)
@@ -947,7 +955,7 @@ window.addEventListener("message", (event) => {
     if (terrainOverlayEnabled && !contourMeta) buildTerrainContours();
     draw();
   }
-  if (data?.type === "stamina:elevation-filter") applyElevationFilter(data.config);
+  if (data?.type === "stamina:visibility-mask") applyVisibilityMask(data.config);
   if (data?.type === "stamina:temperature-config") applyAppConfig(data.config);
   if (data?.type === "stamina:sites") {
     appSites = data.sites.map((site) => ({
@@ -957,6 +965,7 @@ window.addEventListener("message", (event) => {
     draw();
   }
   if (data?.type === "stamina:add-mode") setAddMode(data.enabled);
+  if (data?.type === "stamina:default-view") resetView();
   // Comparison grid on/off: { siteIds, halfSizeM, insetRight } or null
   if (data?.type === "stamina:compare") {
     compare = data.compare;
