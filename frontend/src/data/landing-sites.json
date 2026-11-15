@@ -129,11 +129,11 @@
       "color": "#ffffff",
       "latitude": -83.6,
       "longitude": -68.7,
-      "site": "Artemis III candidate region — a peak near the crater Cabeus B",
+      "site": "Artemis IV map region — a peak near the crater Cabeus B",
       "terrain": "Peak",
       "goal": "Crewed landing near permanently shadowed regions",
       "facts": [
-        ["Program", "Artemis III candidate region"]
+        ["Program", "Artemis IV map collection"]
       ],
       "story": "One of the nine candidate landing regions NASA identified for Artemis III. It sits near Cabeus, the crater where the LCROSS impactor detected water ice in 2009."
     },
@@ -144,11 +144,11 @@
       "color": "#ffffff",
       "latitude": -86.8,
       "longitude": -22.8,
-      "site": "Artemis III candidate region — by Haworth crater",
+      "site": "Artemis IV map region — by Haworth crater",
       "terrain": "Crater rim",
       "goal": "Crewed landing near permanently shadowed regions",
       "facts": [
-        ["Program", "Artemis III candidate region"]
+        ["Program", "Artemis IV map collection"]
       ],
       "story": "One of the nine candidate landing regions NASA identified for Artemis III, next to Haworth, a large permanently shadowed crater and one of the coldest places on the map.",
       "region": [
@@ -166,11 +166,11 @@
       "color": "#ffffff",
       "latitude": -86.0,
       "longitude": -0.2,
-      "site": "Artemis III candidate region — Malapert Massif",
+      "site": "Artemis IV map region — Malapert Massif",
       "terrain": "Mountain massif",
       "goal": "Crewed landing near permanently shadowed regions",
       "facts": [
-        ["Program", "Artemis III candidate region"]
+        ["Program", "Artemis IV map collection"]
       ],
       "story": "One of the nine candidate landing regions NASA identified for Artemis III. Malapert is a large mountain massif on the Earth-facing side of the pole, which helps direct communication with Earth.",
       "region": [
@@ -188,11 +188,11 @@
       "color": "#ffffff",
       "latitude": -85.4,
       "longitude": 31.7,
-      "site": "Artemis III candidate region — plateau of Mons Mouton",
+      "site": "Artemis IV map region — plateau of Mons Mouton",
       "terrain": "Plateau",
       "goal": "Crewed landing near permanently shadowed regions",
       "facts": [
-        ["Program", "Artemis III candidate region"]
+        ["Program", "Artemis IV map collection"]
       ],
       "story": "One of the nine candidate landing regions NASA identified for Artemis III, on the flat top of Mons Mouton (formerly Leibnitz Beta), a mountain named after NASA mathematician Melba Roy Mouton.",
       "region": [
@@ -210,11 +210,11 @@
       "color": "#ffffff",
       "latitude": -84.3,
       "longitude": 30.6,
-      "site": "Artemis III candidate region — Mons Mouton",
+      "site": "Artemis IV map region — Mons Mouton",
       "terrain": "Mountain",
       "goal": "Crewed landing near permanently shadowed regions",
       "facts": [
-        ["Program", "Artemis III candidate region"]
+        ["Program", "Artemis IV map collection"]
       ],
       "story": "One of the nine candidate landing regions NASA identified for Artemis III, on Mons Mouton, a mountain named after NASA mathematician Melba Roy Mouton."
     },
@@ -225,11 +225,11 @@
       "color": "#ffffff",
       "latitude": -85.4,
       "longitude": 37.3,
-      "site": "Artemis III candidate region — rim of Nobile crater",
+      "site": "Artemis IV map region — rim of Nobile crater",
       "terrain": "Crater rim",
       "goal": "Crewed landing near permanently shadowed regions",
       "facts": [
-        ["Program", "Artemis III candidate region"]
+        ["Program", "Artemis IV map collection"]
       ],
       "story": "One of the nine candidate landing regions NASA identified for Artemis III, on the rim of Nobile crater.",
       "region": [
@@ -247,11 +247,11 @@
       "color": "#ffffff",
       "latitude": -84.0,
       "longitude": 58.8,
-      "site": "Artemis III candidate region — rim of Nobile crater",
+      "site": "Artemis IV map region — rim of Nobile crater",
       "terrain": "Crater rim",
       "goal": "Crewed landing near permanently shadowed regions",
       "facts": [
-        ["Program", "Artemis III candidate region"]
+        ["Program", "Artemis IV map collection"]
       ],
       "story": "One of the nine candidate landing regions NASA identified for Artemis III, on another part of the rim of Nobile crater.",
       "region": [
@@ -269,11 +269,11 @@
       "color": "#ffffff",
       "latitude": -88.2,
       "longitude": -64.6,
-      "site": "Artemis III candidate region — rim of de Gerlache crater",
+      "site": "Artemis IV map region — rim of de Gerlache crater",
       "terrain": "Crater rim",
       "goal": "Crewed landing near permanently shadowed regions",
       "facts": [
-        ["Program", "Artemis III candidate region"]
+        ["Program", "Artemis IV map collection"]
       ],
       "story": "One of the nine candidate landing regions NASA identified for Artemis III, on the rim of de Gerlache crater, close to the pole.",
       "region": [
@@ -291,11 +291,11 @@
       "color": "#ffffff",
       "latitude": -87.2,
       "longitude": 125.5,
-      "site": "Artemis III candidate region — Slater Plain",
+      "site": "Artemis IV map region — Slater Plain",
       "terrain": "Plain",
       "goal": "Crewed landing near permanently shadowed regions",
       "facts": [
-        ["Program", "Artemis III candidate region"]
+        ["Program", "Artemis IV map collection"]
       ],
       "story": "One of the nine candidate landing regions NASA identified for Artemis III, a plain on the far side of the pole from Malapert."
     }

@@ -18,13 +18,14 @@ export default function WelcomeModal({
         aria-modal="true"
         aria-labelledby="welcome-title"
       >
+        <img className="welcome-logo" src="/brand/stamina-logo.png" alt="STAMINA" />
 
         <p className="welcome-eyebrow">
           WELCOME TO STAMINA
         </p>
 
         <h2 id="welcome-title">
-          Ready to explore the Moon?
+          Lunar site selection and comparison
         </h2>
 
         <p className="welcome-description">
@@ -34,6 +35,11 @@ export default function WelcomeModal({
 
         <div className="welcome-options">
           <div className="welcome-option featured">
+            <img
+              className="welcome-option-image welcome-moon"
+              src="/brand/moon-near-side.png"
+              alt="The near side of the Moon (LROC WAC mosaic)"
+            />
 
             <h3>Discover the Site</h3>
 
@@ -47,11 +53,16 @@ export default function WelcomeModal({
               className="welcome-primary"
               onClick={onStartTutorial}
             >
-              Start Site Demo
+              Start Site Demo →
             </button>
           </div>
 
           <div className="welcome-option">
+            <img
+              className="welcome-option-image welcome-screenshot"
+              src="/brand/explorer-preview.jpg"
+              alt="The STAMINA explorer: south pole map with the temperature layer and landing sites"
+            />
 
             <h3>Free Exploration</h3>
 
@@ -65,7 +76,7 @@ export default function WelcomeModal({
               className="welcome-secondary"
               onClick={onExplore}
             >
-              Explore Freely
+              Explore Freely →
             </button>
           </div>
         </div>

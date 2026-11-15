@@ -65,7 +65,7 @@ type Props = {
 const PRESETS: Record<CameraPreset, { lon: number; lat: number; heightKm: number }> = {
   // The near side, where the Apollo sites are.
   nearSide: { lon: 5, lat: 5, heightKm: 4200 },
-  // Looking down on the south pole and the Artemis III regions.
+  // Looking down on the south pole and the Artemis IV regions.
   southPole: { lon: 0, lat: -89.9, heightKm: 900 },
   // Near side tilted south: Apollo and the south pole in one view.
   both: { lon: 10, lat: -35, heightKm: 4600 },

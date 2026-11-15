@@ -440,14 +440,14 @@
 .map-timeline-details { margin-top: 6px; font-size: 11px; }
 .map-timeline-details summary { cursor: pointer; color: #c6c6c6; padding: 2px 0; }
 .map-timeline-details summary:focus-visible { outline: 2px solid #e5bd59; outline-offset: 2px; }
-.map-time-controls { position: sticky; bottom: -8px; z-index: 2; display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin: 8px -12px -8px; padding: 9px 12px; border-top: 1px solid #4c525b; background: linear-gradient(180deg, rgba(43,47,53,.96), #25292f 30%); font-size: 12px; }
+.map-time-controls { position: sticky; bottom: 0; z-index: 2; display: flex; align-items: center; flex-wrap: wrap; gap: 7px; min-width: 0; margin: 8px -12px 0; padding: 9px 12px; border-top: 1px solid #4c525b; background: linear-gradient(180deg, rgba(43,47,53,.96), #25292f 30%); font-size: 12px; }
 .map-time-controls button, .map-time-controls select, .map-timeline > p button { color: #eee; background: #343a42; border: 1px solid #626a75; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
 .map-time-controls button:hover:not(:disabled), .map-time-controls select:hover { border-color: #d0b565; }
 .map-time-controls .map-time-play { min-width: 72px; color: #171717; border-color: #e5bd59; background: #e5bd59; font-weight: 700; }
 .map-time-controls .map-time-play:hover { background: #f0ce71; }
 .map-time-controls label { display: flex; align-items: center; gap: 6px; color: #c7cbd1; }
 .map-time-controls button:disabled { opacity: .4; cursor: default; }
-.map-time-controls strong { margin-left: auto; font-size: 12px; font-variant-numeric: tabular-nums; color: #e5bd59; }
+.map-time-controls strong { margin-left: auto; white-space: nowrap; font-size: 12px; font-variant-numeric: tabular-nums; color: #e5bd59; }
 .map-site-timelines { max-height: 125px; overflow: auto; margin: 10px 0; }
 .map-site-time-row { display: grid; grid-template-columns: 140px minmax(65px, 1fr) 220px; align-items: center; gap: 10px; margin: 7px 0; font-size: 11px; }
 .map-site-time-row > button { text-align: left; color: #ddd; background: transparent; border: 0; padding: 2px; cursor: pointer; font: inherit; }
@@ -456,6 +456,10 @@
 .map-site-time-row .mission-visibility-bar { height: 14px; }
 .mission-segment.matching { background: #66cda4; }
 .site-time-match { color: #87e4bb; }
+@media (max-width: 600px) {
+  .map-time-controls { gap: 6px; }
+  .map-time-controls strong { flex: 1 0 100%; margin-left: 0; text-align: right; }
+}
 @media (max-width: 1150px) {
   .map-site-time-row { grid-template-columns: 110px minmax(65px, 1fr); }
   .map-site-time-row > span { grid-column: 1 / -1; }

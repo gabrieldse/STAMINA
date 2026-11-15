@@ -508,6 +508,44 @@ function drawColorbar(lo, hi) {
   $("tmax").textContent = `${hi.toFixed(0)} K`;
 }
 
+let measuring = false, measurement = null;
+function measurementPoint(e, commit) {
+  const select = (cell) => {
+    const point = toWorld(e.offsetX * dpr(), e.offsetY * dpr());
+    if (Math.hypot(point.x, point.y) > meta.radiusM) return;
+    const cellId = cell?.site.id || null;
+    if (commit && (!measurement || measurement.done || measurement.cellId !== cellId)) {
+      measurement = { start: point, end: point, cellId, done: false };
+    } else if (measurement && !measurement.done && measurement.cellId === cellId) {
+      measurement.end = point;
+      if (commit) measurement.done = true;
+    }
+  };
+  if (compare) inCompareCell(e.offsetX * dpr(), e.offsetY * dpr(), select);
+  else select(null);
+  draw();
+}
+function drawMeasurement(cellId = null) {
+  if (!measuring || !measurement || measurement.cellId !== cellId) return;
+  const a = toScreen(measurement.start.x, measurement.start.y), b = toScreen(measurement.end.x, measurement.end.y);
+  const p = toLatLon(measurement.start.x, measurement.start.y), q = toLatLon(measurement.end.x, measurement.end.y);
+  const rad = Math.PI / 180;
+  const hav = Math.sin((q.lat-p.lat)*rad/2)**2 + Math.cos(p.lat*rad)*Math.cos(q.lat*rad)*Math.sin((q.lon-p.lon)*rad/2)**2;
+  const meters = 2 * meta.moonRadiusM * Math.asin(Math.sqrt(Math.min(1, hav)));
+  const label = `${meters >= 1000 ? (meters/1000).toFixed(2) + " km" : meters.toFixed(0) + " m"}${measurement.done ? "" : " · click to finish"}`;
+  const s = dpr();
+  ctx.save();
+  ctx.beginPath(); ctx.rect(frame.x, frame.y, frame.w, frame.h); ctx.clip();
+  ctx.strokeStyle = "#ffe07b"; ctx.lineWidth = 2*s;
+  ctx.beginPath(); ctx.moveTo(a.sx,a.sy); ctx.lineTo(b.sx,b.sy); ctx.stroke();
+  for (const point of [a,b]) { ctx.beginPath(); ctx.arc(point.sx,point.sy,4*s,0,2*Math.PI); ctx.fillStyle="#ffe07b"; ctx.fill(); }
+  ctx.font = `600 ${12*s}px system-ui`; ctx.textAlign="left"; ctx.textBaseline="top";
+  const w = ctx.measureText(label).width + 12*s;
+  const x = Math.max(frame.x, Math.min((a.sx+b.sx)/2, frame.x+frame.w-w));
+  const y = Math.max(frame.y, Math.min((a.sy+b.sy)/2+8*s, frame.y+frame.h-26*s));
+  ctx.fillStyle="#171b21"; ctx.fillRect(x,y,w,24*s); ctx.fillStyle="#ffe07b"; ctx.fillText(label,x+6*s,y+5*s);
+  ctx.restore();
+}
 function draw() {
   const W = canvas.width, H = canvas.height;
   ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--bg");
@@ -515,6 +553,7 @@ function draw() {
   if (compare) return drawCompare();
   useFullFrame();
   drawMap(false);
+  drawMeasurement();
   drawScaleBar(true);
 }
 // The map inside the current frame: clipped to the polar disc, or to the
@@ -555,9 +594,9 @@ function drawMap(inCell) {
     // Markers and labels stay inside the cell
     ctx.save();
     ctx.beginPath(); ctx.rect(frame.x, frame.y, frame.w, frame.h); ctx.clip();
+    drawVisibilityMask(c, rpx);
     drawSites();
     drawPin();
-    drawVisibilityMask(c, rpx);
     ctx.restore();
     return;
   }
@@ -586,9 +625,9 @@ function drawMap(inCell) {
       ctx.fillStyle = "#fff"; ctx.fillText(f.name, p.sx + 7 * s, p.sy - 5 * s);
     }
   }
+  drawVisibilityMask(c, rpx);
   drawSites();
   drawPin();
-  drawVisibilityMask(c, rpx);
 }
 // Shared by the full polar view and each clipped comparison cell.
 function drawVisibilityMask(c, rpx) {
@@ -608,19 +647,23 @@ function drawPin() {
 }
 
 // ---------- comparison grid: up to 6 sites, 2 rows x 3 columns ----------
-const COMPARE_COLS = 3, COMPARE_ROWS = 2;
 function drawCompare() {
   const s = dpr(), W = canvas.width, H = canvas.height, gap = 6 * s, titleH = 22 * s;
   // Leave the app's site menu (right) and the readout/legend strip (bottom) free.
   const right = (compare.insetRight || 0) * s, bottom = 64 * s;
-  const cw = (W - right - gap * (COMPARE_COLS + 1)) / COMPARE_COLS;
-  const ch = (H - bottom - gap * (COMPARE_ROWS + 1)) / COMPARE_ROWS;
+  const sites = compare.siteIds.map(id => appSites.find(site => site.id === id)).filter(Boolean);
+  const count = sites.length;
+  const cols = count <= 2 ? count || 1 : count <= 4 ? 2 : 3;
+  const rows = Math.ceil(count / cols) || 1;
+  const ch = (H - bottom - gap * (rows + 1)) / rows;
   const saved = { ...view };
   compareCells = [];
 
-  for (let i = 0; i < COMPARE_COLS * COMPARE_ROWS; i++) {
-    const x = gap + (i % COMPARE_COLS) * (cw + gap), y = gap + Math.floor(i / COMPARE_COLS) * (ch + gap);
-    const site = appSites.find((item) => item.id === compare.siteIds[i]);
+  for (let i = 0; i < count; i++) {
+    const row = Math.floor(i / cols), rowCols = Math.min(cols, count - row * cols);
+    const cw = (W - right - gap * (rowCols + 1)) / rowCols;
+    const x = gap + (i % cols) * (cw + gap), y = gap + row * (ch + gap);
+    const site = sites[i];
     ctx.fillStyle = "#111"; ctx.fillRect(x, y, cw, ch);
     if (!site) {
       ctx.strokeStyle = "#333"; ctx.lineWidth = s; ctx.strokeRect(x + 0.5, y + 0.5, cw - 1, ch - 1);
@@ -632,13 +675,14 @@ function drawCompare() {
     view.k = Math.min(frame.w, frame.h) / (2 * compare.halfSizeM);
     compareCells.push({ ...frame, site, k: view.k });
     drawMap(true);
+    drawMeasurement(site.id);
     drawCellScale(s);
 
     ctx.fillStyle = "rgba(20, 20, 22, 0.92)"; ctx.fillRect(x, y, cw, titleH);
     ctx.beginPath(); ctx.arc(x + 12 * s, y + titleH / 2, 4.5 * s, 0, 2 * Math.PI);
     ctx.fillStyle = site.color; ctx.fill();
     ctx.fillStyle = "#fff"; ctx.font = `600 ${12 * s}px system-ui`; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-    ctx.fillText(site.name, x + 22 * s, y + titleH / 2);
+    ctx.fillText(`${i + 1}. ${site.name}`, x + 22 * s, y + titleH / 2, Math.max(1, cw - 76 * s));
     ctx.textAlign = "right"; ctx.fillStyle = "#aaa"; ctx.font = `${10 * s}px system-ui`;
     ctx.fillText(`${(2 * compare.halfSizeM / 1000).toFixed(0)} km`, x + cw - 8 * s, y + titleH / 2);
     ctx.textBaseline = "alphabetic";
@@ -979,6 +1023,11 @@ window.addEventListener("message", (event) => {
     draw();
   }
   if (data?.type === "stamina:add-mode") setAddMode(data.enabled);
+  if (data?.type === "stamina:measure") {
+    measuring = Boolean(data.enabled); measurement = null;
+    canvas.style.cursor = measuring ? "crosshair" : "";
+    draw();
+  }
   if (data?.type === "stamina:default-view") resetView();
   // Comparison grid on/off: { siteIds, halfSizeM, insetRight } or null
   if (data?.type === "stamina:compare") {
@@ -1020,11 +1069,13 @@ function resetView() {
 
 let drag = null;
 canvas.addEventListener("pointerdown", (e) => {
+  if (measuring) { measurementPoint(e, true); return; }
   if (compare) { drag = { moved: false }; return; }  // cells don't pan; clicks select
   drag = { sx: e.offsetX, sy: e.offsetY, vx: view.x, vy: view.y, moved: false };
   canvas.setPointerCapture(e.pointerId); canvas.classList.add("dragging");
 });
 canvas.addEventListener("pointermove", (e) => {
+  if (measuring) { measurementPoint(e, false); return; }
   if (drag && !compare) {
     const dx = e.offsetX - drag.sx, dy = e.offsetY - drag.sy;
     if (Math.hypot(dx, dy) > 3) drag.moved = true;
@@ -1034,6 +1085,7 @@ canvas.addEventListener("pointermove", (e) => {
   readoutAt(e);
 });
 canvas.addEventListener("pointerup", (e) => {
+  if (measuring) return;
   canvas.classList.remove("dragging");
   if (drag && !drag.moved && compare) {
     // A click in a comparison cell selects its site.
@@ -1050,9 +1102,24 @@ canvas.addEventListener("pointerup", (e) => {
   }
   drag = null;
 });
+let cropScroll = 0, lastCropScroll = 0;
 canvas.addEventListener("wheel", (e) => {
   e.preventDefault();
-  if (compare) return;  // the crop size comes from the app
+  if (compare) {
+    const now = performance.now();
+    if (now - lastCropScroll > 250) cropScroll = 0;
+    lastCropScroll = now;
+    cropScroll += e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? canvas.clientHeight : 1);
+    if (Math.abs(cropScroll) >= 70) {
+      const sizes = [10, 20, 30, 40, 80], current = sizes.indexOf(Math.round(compare.halfSizeM / 500));
+      const next = sizes[Math.max(0, Math.min(sizes.length-1, current + Math.sign(cropScroll)))];
+      cropScroll = 0;
+      compare.halfSizeM = next * 500;
+      if (EMBED) parent.postMessage({ type: "stamina:compare-crop", cropKm: next }, location.origin);
+      draw();
+    }
+    return;
+  }
   const before = toWorld(e.offsetX * dpr(), e.offsetY * dpr());
   const maxK = 40 * meta.size / (2 * meta.radiusM);  // up to 40 screen px per data pixel
   view.k = Math.min(maxK, Math.max(0.2 * canvas.height / meta.radiusM / 2, view.k * Math.exp(-e.deltaY * 0.0015)));

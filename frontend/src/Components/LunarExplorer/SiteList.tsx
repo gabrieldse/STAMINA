@@ -42,7 +42,7 @@ type Props = {
 
 const PRESET_BUTTONS: { preset: CameraPreset; label: string; title: string }[] = [
   { preset: "nearSide", label: "Near side", title: "The near side, with the Apollo sites" },
-  { preset: "southPole", label: "South pole", title: "Look down on the south pole and the Artemis III regions" },
+  { preset: "southPole", label: "South pole", title: "Look down on the south pole and the Artemis IV regions" },
   { preset: "both", label: "Both", title: "Near side tilted south: Apollo and the south pole together" },
 ];
 
@@ -68,7 +68,7 @@ export default function SiteList({
   onPreset,
   onOpenChange,
 }: Props) {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState(
     () => new Set(groups.filter((group) => group.startOpen).map((group) => group.key))
   );

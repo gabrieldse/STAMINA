@@ -4,6 +4,7 @@ import { useState } from "react";
 import LunarExplorer from "./Components/LunarExplorer/LunarExplorer";
 import SiteDemo from "./Components/SiteDemo/SiteDemo";
 import MapSetup from "./Components/WelcomeModal/MapSetup";
+import MissionSetup from "./Components/WelcomeModal/MissionSetup";
 import WelcomeModal from "./Components/WelcomeModal/WelcomeModal";
 import type { InitialMapSite } from "./types/sites";
 
@@ -13,19 +14,17 @@ type AppMode = "explore" | "tutorial";
 
 export default function App() {
   const [mode, setMode] = useState<AppMode>("explore");
-  const [dialog, setDialog] = useState<"map" | "help" | null>("help");
+  const [dialog, setDialog] = useState<"map" | "mission" | "help" | null>("help");
+  const [mission, setMission] = useState({ date: "2028-02-08", durationDays: 20 });
   const [mapChoice, setMapChoice] = useState<{ site: InitialMapSite | null; generation: number } | null>(null);
 
   function startTutorial() {
-    if (!mapChoice) {
-      setMapChoice({ site: null, generation: 1 });
-    }
-    setDialog(null);
+    setDialog(mapChoice ? null : "mission");
     setMode("tutorial");
   }
 
   function exploreFreely() {
-    setDialog(mapChoice ? null : "map");
+    setDialog(mapChoice ? null : "mission");
     setMode("explore");
   }
 
@@ -85,7 +84,7 @@ export default function App() {
 
       {/* MAIN SCIENTIFIC WORKSPACE */}
       <div className="stamina-workspace">
-        {mapChoice && <LunarExplorer key={mapChoice.generation} initialSite={mapChoice.site ?? undefined} onMapArea={() => setDialog("map")} />}
+        {mapChoice && <LunarExplorer key={mapChoice.generation} initialSite={mapChoice.site ?? undefined} initialDate={mission.date} initialDurationDays={mission.durationDays} onMapArea={() => setDialog("map")} />}
       </div>
 
       {/* APPLICATION STATUS BAR */}
@@ -100,6 +99,11 @@ export default function App() {
       {/* WELCOME MODAL */}
       {mode === "tutorial" && !dialog && <SiteDemo onClose={exploreFreely} />}
       {dialog === "help" && <WelcomeModal onStartTutorial={startTutorial} onExplore={exploreFreely} />}
+      {dialog === "mission" && <MissionSetup initial={mission} onStart={value => {
+        setMission(value);
+        setMapChoice({ site: null, generation: 1 });
+        setDialog(null);
+      }} onBack={() => setDialog("help")} />}
       {dialog === "map" && (
         <MapSetup onChoose={site => {
           setMapChoice(previous => ({ site, generation: (previous?.generation ?? 0)+1 }));

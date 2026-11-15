@@ -32,7 +32,7 @@ const Globe3D = lazy(() => import("./Globe3D"));
 type MapView = "2d" | "3d";
 
 // Crop sizes for the comparison cells (side of the square, km)
-const CROP_SIZES_KM = [10, 20, 40, 80];
+const CROP_SIZES_KM = [10, 20, 30, 40, 80];
 
 type Props = {
   initialSite?: InitialMapSite;
@@ -71,14 +71,14 @@ const CUSTOM_COLOR = "#ff9f43";
 type VisibilityMask = { size: number; radiusM: number; resolutionM: number; coveragePct: number; encoding: "bitset-msb"; visiblePacked: string; coveragePacked: string };
 type TerrainOverlay = { size: number; radiusM: number; coveragePct: number; shadePacked: string; coveragePacked: string };
 
-// Artemis III regions share names with craters (Haworth, Nobile, ...) but are
-// separate areas next to them, so their map labels say "A3".
+// Artemis IV map regions share names with craters (Haworth, Nobile, ...) but
+// are separate areas next to them, so their map labels say "A4".
 const LANDING_MAP_SITES: MapSite[] = LANDING_SITES.filter(isOnPolarMap).map(
   ({ id, name, program, color, latitude, longitude, region }) => ({
     id,
     name,
-    label: program === "Artemis" ? `A3 ${name}` : name,
-    kind: program === "Artemis" ? "Artemis III region, not the crater" : program,
+    label: program === "Artemis" ? `A4 ${name}` : name,
+    kind: program === "Artemis" ? "Artemis IV map region, not the crater" : program,
     color,
     latitude,
     longitude,
@@ -98,6 +98,7 @@ function toLunarSite(site: LandingSite): LunarSite {
 
 // Messages posted by the lunar map viewer (public/lunar-map).
 type ViewerMessage =
+  | { type: "stamina:compare-crop"; cropKm: number }
   | { type: "stamina:viewer-ready" }
   | {
       type: "stamina:site-selected";
@@ -140,6 +141,10 @@ export default function MapPanel({
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [viewerReady, setViewerReady] = useState(false);
   const [visibilityMask, setVisibilityMask] = useState<VisibilityMask | null>(null);
+  const [visibilityError, setVisibilityError] = useState<string | null>(null);
+  const [visibilityAttempt, setVisibilityAttempt] = useState(0);
+  const hasVisibilityResult = useRef(false);
+  const visibilityTarget = useRef<string | null>(null);
   const [terrainOverlay, setTerrainOverlay] = useState<TerrainOverlay | null>(null);
   const [mapCenter, setMapCenter] = useState<{ id: string; latitude: number; longitude: number; name: string } | null>(initialSite ? { ...initialSite, id: "initial-site" } : null);
   const globalCentered = mapCenter !== null;
@@ -155,15 +160,40 @@ export default function MapPanel({
     if (!sunVisible && !earthVisible) {
       onVisibilityReady?.(true);
       setVisibilityMask(null);
+      setVisibilityError(null);
+      hasVisibilityResult.current = false;
+      visibilityTarget.current = null;
       if (viewerReady) postToViewer({ type: "stamina:visibility-mask", config: null });
       return;
     }
+    const targetKey = globalMapActive && mapCenter
+      ? `center:${mapCenter.latitude}:${mapCenter.longitude}`
+      : "south-pole";
+    if (visibilityTarget.current !== targetKey) {
+      visibilityTarget.current = targetKey;
+      hasVisibilityResult.current = false;
+      setVisibilityMask(null);
+    }
     const controller = new AbortController();
     onVisibilityReady?.(false);
-    setVisibilityMask(null);
-    if (viewerReady && !globalMapActive) postToViewer({ type: "stamina:visibility-mask", config: { pending: true } });
+    setVisibilityError(null);
+    if (!hasVisibilityResult.current) {
+      if (globalMapActive) setVisibilityMask(null);
+      if (viewerReady && !globalMapActive) postToViewer({ type: "stamina:visibility-mask", config: { pending: true } });
+    }
     const timer = window.setTimeout(async () => {
-      if (!positions) return;
+      if (!positions) {
+        // The ephemeris timeline loads asynchronously (and reloads when its
+        // date window changes). A null value here is a normal loading state;
+        // MapTimeline reports an actual ephemeris request failure itself.
+        setVisibilityError(null);
+        if (!hasVisibilityResult.current) {
+          if (globalMapActive) setVisibilityMask(null);
+          if (viewerReady && !globalMapActive) postToViewer({ type: "stamina:visibility-mask", config: null });
+        }
+        onVisibilityReady?.(true);
+        return;
+      }
       try {
         // Show a quick result, then refine without blanking the preview.
         for (const size of playing ? [768] : [384, 1536]) {
@@ -182,21 +212,31 @@ export default function MapPanel({
           if (globalMapActive && data.coveragePct === 0) throw new Error("NASA global LOLA returned no terrain for this map center.");
           if (globalMapActive) setVisibilityMask(data as VisibilityMask);
           else postToViewer({ type: "stamina:visibility-mask", config: data });
+          hasVisibilityResult.current = true;
+          setVisibilityError(null);
         }
         onVisibilityReady?.(true);
       } catch (cause) {
-        if (!controller.signal.aborted) console.error("Visibility map unavailable:", cause);
+        if (!controller.signal.aborted) {
+          console.error("Visibility map unavailable:", cause);
+          setVisibilityError(cause instanceof Error ? cause.message : "Visibility calculation failed.");
+          if (!hasVisibilityResult.current) {
+            if (globalMapActive) setVisibilityMask(null);
+            if (viewerReady && !globalMapActive) postToViewer({ type: "stamina:visibility-mask", config: null });
+          }
+          onVisibilityReady?.(true);
+        }
       }
     }, 150);
     return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [viewerReady, positions, sunVisible, earthVisible, onVisibilityReady, playing, globalMapActive, mapCenter]);
+  }, [viewerReady, positions, sunVisible, earthVisible, onVisibilityReady, playing, globalMapActive, mapCenter, visibilityAttempt]);
   // Site whose info card the user closed; it reopens for the next site.
   const [closedInfoId, setClosedInfoId] = useState<string | null>(null);
   const infoSite = selectedSite?.details;
 
   // Points clicked on the map ("Custom" group) and sites switched off.
   const [customSites, setCustomSites] = useState<LunarSite[]>(initialSite ? [{ ...initialSite, id: "initial-site" }] : []);
-  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => new Set(initialSite ? LANDING_SITES.map(site => site.id) : []));
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => new Set(LANDING_SITES.map(site => site.id)));
   const customRef = useRef(customSites);
   useEffect(() => {
     customRef.current = customSites;
@@ -285,6 +325,7 @@ export default function MapPanel({
       if (!isViewerMessage(event.data)) return;
 
       const message = event.data;
+      if (message.type === "stamina:compare-crop" && CROP_SIZES_KM.includes(message.cropKm)) setCropKm(message.cropKm);
 
       if (message.type === "stamina:viewer-ready") {
         setViewerReady(true);
@@ -386,7 +427,11 @@ export default function MapPanel({
 
   // Comparison: the switched-on sites inside the polar map, at most COMPARE_LIMIT shown.
   const [cropKm, setCropKm] = useState(80);
-  const [menuOpen, setMenuOpen] = useState(true);
+  const [measuring, setMeasuring] = useState(false);
+  useEffect(() => {
+    if (viewerReady) postToViewer({ type: "stamina:measure", enabled: measuring });
+  }, [viewerReady, measuring]);
+  const [menuOpen, setMenuOpen] = useState(false);
   const compareSites = useMemo<CompareSite[]>(
     () => mapSites
       .filter((site) => site.latitude <= -80)
@@ -420,7 +465,7 @@ export default function MapPanel({
   const globeSites = useMemo<GlobeSite[]>(() => {
     const landing = LANDING_SITES.map(({ id, name, program, color, latitude, longitude, region }) => ({
       id,
-      label: program === "Artemis" ? `A3 ${name}` : name,
+      label: program === "Artemis" ? `A4 ${name}` : name,
       color,
       latitude,
       longitude,
@@ -555,17 +600,17 @@ export default function MapPanel({
   const groups: SiteGroup[] = [
     {
       key: "artemis",
-      title: "Artemis III",
-      note: "A3 regions",
+      title: "Artemis IV",
+      note: "A4 regions",
       items: LANDING_SITES.filter((site) => site.program === "Artemis"),
-      startOpen: true,
+      startOpen: false,
     },
     {
       key: "custom",
       title: "Custom",
       note: "Use + Add point",
       items: customSites.map(({ id, name }) => ({ id, name, color: CUSTOM_COLOR })),
-      startOpen: true,
+      startOpen: false,
       editable: true,
     },
     {
@@ -580,6 +625,7 @@ export default function MapPanel({
   return (
     <section className="explorer-map">
       <div className="map-header">
+        {(!globalMapActive || comparing) && <button type="button" aria-pressed={measuring} onClick={() => setMeasuring(value => !value)} title="Click two points to measure the lunar surface distance. Click again to start a new measurement.">{measuring ? "Finish measuring" : "Measure distance"}</button>}
         {comparing ? (
           <>
             <strong>
@@ -604,7 +650,7 @@ export default function MapPanel({
             <strong>{activeView === "3d" ? "Moon" : mapCenter ? mapCenter.name : "Lunar South Pole"}</strong>
             <span>
               {activeView === "3d"
-                ? "LROC WAC mosaic · Apollo, Artemis III and custom sites"
+                ? "LROC WAC mosaic · Apollo, Artemis IV and custom sites"
                 : globalCentered ? `LROC WAC imagery | centered at ${mapCenter.latitude.toFixed(3)}°, ${mapCenter.longitude.toFixed(3)}°`
                 : `${temperature.enabled ? "Diviner surface temperature" : "LOLA relief"}${mapCenter ? " | site-centered 2D" : " · 80°S to the pole"}`}
             </span>
@@ -618,6 +664,12 @@ export default function MapPanel({
 
       <div className="map-workspace map-workspace-embed">
         {!comparing && <button className="map-area-button" type="button" onClick={onMapArea} aria-haspopup="dialog" title="Choose coordinates or use the default south-pole map">Map area</button>}
+        {visibilityError && (sunVisible || earthVisible) && !comparing && (
+          <div className="visibility-error" role="alert">
+            <span>Visibility filter: {visibilityError}</span>
+            <button type="button" onClick={() => setVisibilityAttempt((attempt) => attempt + 1)}>Retry</button>
+          </div>
+        )}
         {/* The 2D map stays loaded in 3D: it still supplies site temperatures. */}
         <iframe
           ref={frameRef}

@@ -48,9 +48,9 @@ function formatKelvin(value: number | null | undefined) {
     : "—";
 }
 
-export default function LunarExplorer({ initialSite, onMapArea }: { initialSite?: InitialMapSite; onMapArea: () => void }) {
+export default function LunarExplorer({ initialSite, initialDate = "2028-02-08", initialDurationDays = 20, onMapArea }: { initialSite?: InitialMapSite; initialDate?: string; initialDurationDays?: number; onMapArea: () => void }) {
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
-  const [rightPanelOpen, setRightPanelOpen] = useState(true);
+  const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const analysisVersion = useRef(0);
   // Selected lunar landing site
   const [selectedSite, setSelectedSite] =
@@ -78,8 +78,8 @@ export default function LunarExplorer({ initialSite, onMapArea }: { initialSite?
     useState<TemperatureSelectionStats | null>(null);
 
   // Analysis parameters
-  const [date, setDate] = useState("2032-11-01");
-  const [durationDays, setDurationDays] = useState(14);
+  const [date, setDate] = useState(initialDate);
+  const [durationDays, setDurationDays] = useState(initialDurationDays);
 
   // Scientific results
   const [result, setResult] =
