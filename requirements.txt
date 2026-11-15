@@ -2,5 +2,9 @@ matplotlib
 numba
 numpy
 rasterio
+rioxarray
+scipy
 spiceypy
 solshade==1.0.0
+pyproj
+xarray

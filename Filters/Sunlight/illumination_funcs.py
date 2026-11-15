@@ -16,14 +16,13 @@ from SurfaceData.moon_surface_getter import open_dem
 from numba import njit
 
 import math
+from dataclasses import dataclass
 from pathlib import Path
 
 # rioxarray adds the .rio accessor used to attach map information to xarray data.
 import matplotlib.image as mpimg
-import numpy as np
 import rasterio
 import rioxarray
-import spiceypy as sp
 import xarray as xr
 from rasterio.crs import CRS
 from rasterio.enums import Resampling
@@ -31,11 +30,8 @@ from rasterio.transform import from_origin
 from rasterio.warp import reproject
 from scipy.ndimage import map_coordinates
 from solshade.terrain import compute_horizon_map
-
-# This imports names from this module; when imported normally they are already
-# defined above. Direct execution can also load the module under its package name.
-from Filters.Sunlight.illumination import MOON_RADIUS_KM, sme
-
+from Filters.Sunlight.dem_geometry import load_bounded_terrain, load_regional_terrain, regional_sun_angles
+from Filters.Sunlight.lola_download import validate_bounds
 
 # Solshade's projected distances and the DEM elevations are handled in meters.
 RADIUS_M = MOON_RADIUS_KM * 1000
@@ -48,184 +44,17 @@ POLAR_CRS = CRS.from_proj4(
 # Map coordinates use meters; this is the reference-sphere arc length per degree.
 meters_per_degree = MOON_RADIUS_KM * 1000 * np.pi / 180
 
-
-def directions(lon, lat):
-    """Return local east, north and up unit vectors.
-
-    lon, lat: Site longitude and latitude in degrees.
-    Returns: Three unit vectors in the Moon-centered frame, in east/north/up order.
-    """
-    # NumPy's trigonometric functions take radians, not degrees.
-    lon_rad, lat_rad = np.radians([lon, lat])
-
-    # Up points out from the Moon's center through the chosen site.
-    up = np.array([
-        np.cos(lat_rad) * np.cos(lon_rad),
-        np.cos(lat_rad) * np.sin(lon_rad),
-        np.sin(lat_rad),
-    ])
-    # East and north lie along the site's local horizontal plane.
-    east = np.array([
-        -np.sin(lon_rad),
-        np.cos(lon_rad),
-        0.0,
-    ])
-    north = np.array([
-        -np.sin(lat_rad) * np.cos(lon_rad),
-        -np.sin(lat_rad) * np.sin(lon_rad),
-        np.cos(lat_rad),
-    ])
-
-    return east, north, up
-
-def sun_angles(et, lon, lat, height_m):
-    """
-    Return Sun elevation and azimuth in degrees.
-
-    Parameters:
-    et: SPICE ephemeris time.
-    lon, lat: Site coordinates in degrees.
-    height_m: Site elevation in meters above the DEM reference sphere.
-
-    Returns:
-    (elevation, azimuth): Angles in degrees, with azimuth clockwise from north.
-    """
-    # Unit vectors defining the site's local directions.
-    east, north, up = directions(lon, lat)
-
-    # The second returned value is light travel time, unused here.
-    site_to_sun, _ = sme.get_site2sun_vec(et, lon, lat, height_m)
-
-    # Find how much of the vector points east, north, and up.
-    e = np.dot(site_to_sun, east)
-    n = np.dot(site_to_sun, north)
-    u = np.dot(site_to_sun, up)
-
-    # Elevation is above the local horizontal; azimuth is clockwise from north.
-    elevation = np.degrees(np.arctan2(u, np.hypot(e, n)))
-    azimuth = np.degrees(np.arctan2(e, n)) % 360
-
-    return elevation, azimuth
-
 # Load SPICE data needed by calls that calculate Sun positions or convert time.
 kl.load_kernels()
 
-
-def _validate_dem(dem, lon, lat, max_terrain_height_m):
-    """Validate an open DEM, site coordinates in degrees and optional height bound in meters."""
-    # This validator belongs to the older simple-cylindrical visibility code,
-    # not the polar stereographic Solshade helpers below.
-    expected_crs = rasterio.crs.CRS.from_proj4(
-        "+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=0 +R=1737400 +units=m +no_defs"
-    )
-    if dem.crs != expected_crs:
-        raise ValueError("DEM must use the lunar simple-cylindrical CRS")
-    if dem.transform.b != 0 or dem.transform.d != 0: #b for rotation in x, d for rotation in y
-        raise ValueError("Rotated DEM grids are not supported")
-    if not (-180 <= lon <= 180 and -90 < lat < 90):
-        raise ValueError("Longitude must be in [-180, 180] and latitude in (-90, 90)")
-    if max_terrain_height_m is not None and not np.isfinite(max_terrain_height_m):
-        raise ValueError("Maximum terrain height must be finite")
-
-
-def _read_site(dem, lon, lat, dem_array, max_terrain_height_m):
-    """Return the elevation array, pixel (row, column), and site height in meters.
-
-    dem: Open Rasterio dataset. lon, lat: site coordinates in degrees.
-    dem_array: Optional preloaded elevation array, including its no-data mask.
-    max_terrain_height_m: Optional global terrain height bound in meters.
-    """
-    # Use supplied data if available; otherwise read band 1 and retain its mask.
-    heights = np.ma.asarray(dem.read(1, masked=True) if dem_array is None else dem_array)
-    if heights.shape != (dem.height, dem.width):
-        raise ValueError("DEM array shape does not match the dataset")
-
-    # This DEM uses a simple-cylindrical projection in meters.
-    row, col = dem.index(lon * meters_per_degree, lat * meters_per_degree)
-    if not (0 <= row < dem.height and 0 <= col < dem.width):
-        raise ValueError("Coordinates out of DEM bounds")
-    sight_height = heights[row, col]
-    if np.ma.is_masked(sight_height) or not np.isfinite(sight_height):
-        raise ValueError("The DEM has no valid elevation at this location")
-    if max_terrain_height_m is not None:
-        # This checks the loaded DEM only; the caller must justify a global bound.
-        valid_heights = heights.compressed() #compressed allows us to get all valid (non-masked) heights
-        if np.any(np.isfinite(valid_heights) & (valid_heights > max_terrain_height_m)):
-            raise ValueError("Maximum terrain height is below an elevation in the DEM")
-    return heights, (row, col), float(sight_height)
-
-
-def load_polar_terrain(source_path, resolution_m, search_distance_m):
-    """Reproject the LOLA 75S FLOAT product, in kilometers, to a buffered grid."""
-    # On a stereographic map, this radius encloses the 80 S to 90 S cap.
-    cap_radius = 2 * RADIUS_M * math.tan(math.radians(10) / 2)
-    # Round up so the requested cap and the terrain-search buffer both fit.
-    cap_pixels = math.ceil(cap_radius / resolution_m)
-    buffer_pixels = math.ceil(search_distance_m / resolution_m)
-    # Build a square grid centered on the pole, including terrain outside the cap.
-    half_size = cap_pixels + buffer_pixels
-    size = 2 * half_size
-    # Rasterio's transform maps rows and columns to projected x and y positions.
-    transform = from_origin(-half_size * resolution_m, half_size * resolution_m,
-                            resolution_m, resolution_m)
-    # Start with missing values so uncovered terrain is not mistaken for zero height.
-    terrain = np.full((size, size), np.nan, dtype=np.float32)
-    with rasterio.open(source_path) as source:
-        if source.crs is None:
-            raise ValueError("The polar DEM must have a coordinate reference system")
-        # Reproject band 1 onto our grid; averaging reduces the DEM's resolution.
-        # Missing source pixels remain NaN rather than becoming elevations.
-        reproject(
-            source=rasterio.band(source, 1), destination=terrain,
-            src_transform=source.transform, src_crs=source.crs,
-            src_nodata=source.nodata, dst_transform=transform,
-            dst_crs=POLAR_CRS, dst_nodata=np.nan, resampling=Resampling.average,
-        )
-    terrain *= 1000  # The LOLA FLOAT product stores elevations in kilometers.
-    # Coordinates are at pixel centers: +0.5 moves from the edge to the center.
-    # Rows move downward in the array, so projected y decreases as row increases.
-    x = transform.c + (np.arange(size) + 0.5) * resolution_m
-    y = transform.f - (np.arange(size) + 0.5) * resolution_m
-    # Xarray associates each row and column with its projected coordinate.
-    dem = xr.DataArray(terrain, dims=("y", "x"), coords={"y": y, "x": x})
-    # Attach the projection and transform for Solshade and other raster tools.
-    dem.rio.write_crs(POLAR_CRS, inplace=True)
-    dem.rio.write_transform(transform, inplace=True)
-    return dem, cap_pixels, buffer_pixels
-
-
-def polar_sun_angles(dem, sun_km):
-    """Return local solar elevation and Solshade grid angle for every pixel."""
-    # Expand the 1D coordinate lists into a pair of 2D grids, one value per pixel.
-    x, y = np.meshgrid(dem.x.values, dem.y.values)
-    # Invert the south-polar stereographic projection; angles here are in radians.
-    lon = np.arctan2(x, y)
-    lat = -np.pi / 2 + 2 * np.arctan(np.hypot(x, y) / (2 * RADIUS_M))
-    # Reuse these sine and cosine arrays when calculating position and directions.
-    cos_lat, sin_lat = np.cos(lat), np.sin(lat)
-    cos_lon, sin_lon = np.cos(lon), np.sin(lon)
-    # Convert the Moon-centered site radius to km to match the SPICE Sun position.
-    radius_km = (RADIUS_M + dem.values) / 1000
-    # Sun position minus site position gives the direction from the site to Sun.
-    sx = sun_km[0] - radius_km * cos_lat * cos_lon
-    sy = sun_km[1] - radius_km * cos_lat * sin_lon
-    sz = sun_km[2] - radius_km * sin_lat
-    # Express that Moon-centered vector in each site's local east/north/up frame.
-    east = -sx * sin_lon + sy * cos_lon
-    north = -sx * sin_lat * cos_lon - sy * sin_lat * sin_lon + sz * cos_lat
-    up = sx * cos_lat * cos_lon + sy * cos_lat * sin_lon + sz * sin_lat
-    # Elevation is measured above the local horizontal; negative is below it.
-    elevation = np.degrees(np.arctan2(up, np.hypot(east, north)))
-    # North rotates around the pole, so convert the local direction to grid axes.
-    # Solshade 1.0.0 horizon samples use 0 = grid east, 90 = grid north.
-    grid_east = east * cos_lon + north * sin_lon
-    grid_north = -east * sin_lon + north * cos_lon
-    # Wrap angles to [0, 360) so they can be matched to horizon directions.
-    angle = np.degrees(np.arctan2(grid_north, grid_east)) % 360
-    return elevation, angle
-
-
+#solshade can skip missing samples and still determine a horizon angle
+#this function ensures that we only have reliable horizon coverage for each pixel.
 def complete_ray_coverage(terrain, direction_index, directions, step_pixels, steps):
+    #terrain: 2D array of elevation values
+    #direction_index: index of the direction to sample
+    #directions: total number of directions
+    #step_pixels: number of pixels to step along the ray
+    #steps: number of steps to check along the ray
     """Find pixels whose selected sampled ray stays in valid terrain."""
     # Each element of rows/cols contains that pixel's own row or column index.
     rows, cols = np.indices(terrain.shape)
@@ -251,7 +80,146 @@ def complete_ray_coverage(terrain, direction_index, directions, step_pixels, ste
         complete &= coverage >= 1 - 1e-6
     return complete
 
-def 
+@dataclass(frozen=True)
+class PreparedTerrain:
+    """Terrain and horizon data shared by calculations at different times."""
+
+    dem: xr.DataArray
+    footprint: np.ndarray
+    horizons: xr.DataArray
+    steps: int
+    directions: int
+    bounds: tuple | None
+
+
+def prepare_terrain(dem_path, pixel_size_m=1000, search_dist_m=500000,
+                    directions=90, elevation_units=None, bounds=None):
+    """Load a DEM and compute horizons once, independently of Sun position."""
+    if (not math.isfinite(pixel_size_m) or not math.isfinite(search_dist_m)
+            or pixel_size_m <= 0 or search_dist_m <= 0
+            or not isinstance(directions, (int, np.integer)) or directions < 4):
+        raise ValueError("Pixel size and search distance must be finite and positive; use at least 4 directions")
+    if bounds is None:
+        dem, footprint = load_regional_terrain(dem_path, pixel_size_m, directions, elevation_units)
+    else:
+        bounds = validate_bounds(bounds)
+        paths = dem_path if isinstance(dem_path, (list, tuple)) else [dem_path]
+        dem, footprint = load_bounded_terrain(
+            paths, bounds, pixel_size_m, directions, search_dist_m, elevation_units,
+        )
+    if not np.any(footprint & np.isfinite(dem.values)):
+        raise ValueError("The DEM has no valid elevations in its projected extent")
+    steps = math.ceil(search_dist_m / pixel_size_m)
+    effective_distance = steps * pixel_size_m # Total distance covered by the ray tracing steps in one direction
+    print(f"Calculating {directions} horizons on a {dem.shape[1]} x {dem.shape[0]} grid...")
+
+    horizons = compute_horizon_map(dem, n_directions=directions,
+                                         max_distance=effective_distance,
+                                         step=pixel_size_m,
+                                         chunk_size=8,
+                                         n_jobs=1)
+    return PreparedTerrain(dem, footprint, horizons, steps, directions, bounds)
+
+
+def render_at_time(prepared, et, output_dir):
+    """Save images for one time using previously prepared terrain.
+
+    Files in the output directory are overwritten by the next render. Use
+    separate output directories to retain images for multiple times.
+    """
+    dem = prepared.dem
+    footprint = prepared.footprint
+    horizons = prepared.horizons
+    steps = prepared.steps
+    directions = prepared.directions
+    bounds = prepared.bounds
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    sun_km, _ = sme.get_sun_vec(et)
+    elevation, angle = regional_sun_angles(dem, sun_km)
+
+    direction_index = np.zeros(dem.shape, dtype=np.int64)
+    valid_angle = np.isfinite(angle) #mask of boolean values indicating where the angle is valid
+    angle_spacing = 360 / directions
+    direction_index[valid_angle] = np.floor(angle[valid_angle] / angle_spacing).astype(np.int64) #we convert the angles into indices that can be used to select the corresponding horizon direction (since we only sample every θ increments)
+    row, col = np.indices(dem.shape) #create arrays of row and column indices for the DEM grid
+    current_sun_horizon = horizons.values[direction_index, row, col] #select the horizon for each pixel based on its direction index
+    coverage = complete_ray_coverage(dem.values, #.values allows us to pass the raw numpy array of the DEM
+                                     direction_index,
+                                     directions,
+                                     1,
+                                     steps,
+                                     ) #essentially another mask that validates the coverage of the ray tracing for each pixel
+
+    known = (coverage #coverage mask indicating where the ray tracing is complete
+             & valid_angle #mask indicating where the Sun direction is valid
+             & np.isfinite(elevation) #mask indicating where the elevation is valid
+             & np.isfinite(current_sun_horizon) #mask indicating where the current sun horizon is valid
+             )
+
+    visible = known & (elevation >= current_sun_horizon) #mask indicating where the sun is visible
+
+    terrain = dem.values
+    if bounds is not None:
+        rows_within, cols_within = np.where(footprint)
+        if rows_within.size == 0:
+            raise ValueError("The requested bounds contain no output pixels; decrease pixel_size_m")
+        region = (slice(rows_within.min(), rows_within.max() + 1),
+                  slice(cols_within.min(), cols_within.max() + 1))
+        terrain = terrain[region]
+        visible = visible[region]
+        known = known[region]
+        footprint = footprint[region]
+    valid_terrain = footprint & np.isfinite(terrain)
+
+    visible_in_region = footprint & visible
+
+    # An RGBA pixel has red, green, blue, and opacity values from 0 to 255.
+    # Fill visible pixels in yellow; blocked pixels remain transparent.
+    overlay = np.zeros((*terrain.shape, 4), dtype=np.uint8)
+    overlay[visible_in_region] = (255, 220, 0, 160)
+    overlay[footprint & ~known] = (100, 130, 160, 160)
+
+    # Stretch terrain heights into grayscale for a matching visual base.
+    base = np.zeros((*terrain.shape, 4), dtype=np.uint8)
+    low, high = np.percentile(terrain[valid_terrain], (2, 98))
+    if high <= low:
+        high = low + 1
+    shade = np.clip((terrain[valid_terrain] - low) / (high - low), 0, 1)
+    base[valid_terrain, :3] = (shade * 255).astype(np.uint8)[:, np.newaxis]
+    base[valid_terrain, 3] = 255
+
+    # Blend the translucent overlay over the base for a combined preview.
+    preview = overlay.copy()
+    alpha = overlay[valid_terrain, 3:4].astype(np.float32) / 255
+    preview[valid_terrain, :3] = (
+        overlay[valid_terrain, :3] * alpha
+        + base[valid_terrain, :3] * (1 - alpha)
+    ).astype(np.uint8)
+    preview[valid_terrain, 3] = 255
+
+    base_path = output_dir / "polar_base.png"
+    overlay_path = output_dir / "polar_illumination.png"
+    preview_path = output_dir / "polar_preview.png"
+    mpimg.imsave(base_path, base)
+    mpimg.imsave(overlay_path, overlay)
+    mpimg.imsave(preview_path, preview)
+    return base_path, overlay_path, preview_path
+
+
+def Illumination_filter(dem_path, et, output_dir, pixel_size_m=1000,
+                        search_dist_m=500000, directions=90, elevation_units=None,
+                        bounds=None):
+    """Prepare a regional lunar DEM and save illumination images for one time.
+
+    PNGs use a local projected grid and contain no geographic metadata.
+    Results are approximate and limited by terrain coverage and search distance.
+    """
+    prepared = prepare_terrain(
+        dem_path, pixel_size_m=pixel_size_m, search_dist_m=search_dist_m,
+        directions=directions, elevation_units=elevation_units, bounds=bounds,
+    )
+    return render_at_time(prepared, et, output_dir)
 
 # The following triple-quoted block retains the older ray-tracing implementation
 # as text; Python does not define or run the functions inside it.

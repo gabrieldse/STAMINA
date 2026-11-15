@@ -7,7 +7,7 @@ import numpy as np
 import rasterio
 
 from Filters.filters import run_illumination_filter
-from Filters.Sunlight.illumination import meters_per_degree
+from Filters.Sunlight.illumination_funcs import meters_per_degree
 
 
 def save_illumination_overlay(et, bounds, dem_path, output_path, *,
