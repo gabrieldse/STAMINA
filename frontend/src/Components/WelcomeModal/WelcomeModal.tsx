@@ -25,7 +25,7 @@ export default function WelcomeModal({
         </p>
 
         <h2 id="welcome-title">
-          Ready to explore the Moon?
+          Lunar site selection and comparison
         </h2>
 
         <p className="welcome-description">
@@ -35,8 +35,6 @@ export default function WelcomeModal({
 
         <div className="welcome-options">
           <div className="welcome-option featured">
-            <div className="welcome-option-icon">🚀</div>
-
             <h3>Discover the Site</h3>
 
             <p>
@@ -54,8 +52,6 @@ export default function WelcomeModal({
           </div>
 
           <div className="welcome-option">
-            <div className="welcome-option-icon">🌕</div>
-
             <h3>Free Exploration</h3>
 
             <p>
