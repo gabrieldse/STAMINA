@@ -13,7 +13,7 @@ The Lunar South Pole map (`public/lunar-map/`) needs its temperature grids,
 which are generated and not committed. From the repository root, once:
 
 ```bash
-uv run lola_2d/diviner_web.py --no-serve   # downloads ~210 MB from Moon Trek once, writes ~16 MB of grids
+uv run lola_2d/diviner_web.py --no-serve   # downloads ~210 MB from Moon Trek once, writes ~77 MB of grids (loaded on demand)
 ```
 
 Then `npm run dev` as usual. The viewer also runs on its own with

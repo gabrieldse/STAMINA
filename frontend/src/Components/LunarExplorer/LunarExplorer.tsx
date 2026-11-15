@@ -21,7 +21,9 @@ import type {
 
 import { DEFAULT_TEMPERATURE_CONFIG } from "../../types/temperature";
 
-import type { LandingSite } from "../../types/sites";
+import { COMPARE_LIMIT } from "../../types/sites";
+import type { CompareSite } from "../../types/sites";
+
 
 import type {
   TemperatureConfig,
@@ -53,6 +55,12 @@ export default function LunarExplorer() {
   // Selected lunar landing site
   const [selectedSite, setSelectedSite] =
     useState<LunarSite | null>(null);
+
+  // Comparison grid over the map, and the sites it can show
+  const [comparing, setComparing] = useState(false);
+  const [compareSites, setCompareSites] = useState<CompareSite[]>([]);
+  const compareCount = compareSites.length;
+  const canCompare = compareCount > 0 && compareCount <= COMPARE_LIMIT;
 
   // Standard filters
   const [filters, setFilters] =
@@ -136,15 +144,10 @@ export default function LunarExplorer() {
     setError("");
   }
 
-  // Pick a named landing site from the list
-  function selectLandingSite(site: LandingSite) {
-    changeSite({
-      id: site.id,
-      name: site.name,
-      latitude: site.latitude,
-      longitude: site.longitude,
-      details: site,
-    });
+  // Deselect the site (e.g. when it is switched off on the map)
+  function clearSite() {
+    setSelectedSite(null);
+    clearResults();
   }
 
   // Change selected lunar site
@@ -258,7 +261,7 @@ export default function LunarExplorer() {
       ===================================== */}
       <section className="explorer-center-panel">
 
-        {/* MAP TOOLBAR */}
+        {/* MAP TOOLBAR: show/hide the side panels */}
         <div className="explorer-map-toolbar">
 
           <button type="button" className="explorer-panel-toggle" aria-controls="explorer-filters-panel" aria-expanded={leftPanelOpen}
@@ -266,17 +269,6 @@ export default function LunarExplorer() {
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="2" y="3" width="16" height="14" rx="3" stroke="currentColor" strokeWidth="1.5" /><path d="M7 3v14" stroke="currentColor" strokeWidth="1.5" /><path d={leftPanelOpen ? "m12 7-3 3 3 3" : "m10 7 3 3-3 3"} stroke="currentColor" strokeWidth="1.5" /></svg>
             <span>{leftPanelOpen ? "Hide filters" : "Show filters"}</span>
           </button>
-
-          <div>
-            <strong>Lunar Surface Explorer</strong>
-            <span>South Pole Region</span>
-          </div>
-
-          <span className="explorer-map-context">
-            {selectedSite
-              ? `Selected: ${selectedSite.name}`
-              : "No site selected"}
-          </span>
 
           <button type="button" className="explorer-panel-toggle" aria-controls="explorer-inspector-panel" aria-expanded={rightPanelOpen}
             title={`${rightPanelOpen ? "Hide" : "Show"} site details panel`} onClick={() => setRightPanelOpen(open => !open)}>
@@ -293,9 +285,12 @@ export default function LunarExplorer() {
             selectedSite={selectedSite}
             filters={filters}
             onSiteSelect={changeSite}
-            onLandingSiteSelect={selectLandingSite}
+            onSiteClear={clearSite}
             temperature={temperature}
             onTemperatureSelection={setTemperatureSelection}
+            comparing={comparing}
+            onCompareClose={() => setComparing(false)}
+            onCompareSitesChange={setCompareSites}
           />
 
       </section>
@@ -442,6 +437,27 @@ export default function LunarExplorer() {
             </button>
 
           </div>
+
+          {/* COMPARE: the switched-on polar sites side by side over the map */}
+          <button
+            type="button"
+            className={"explorer-compare-button" + (comparing ? " active" : "")}
+            disabled={!comparing && !canCompare}
+            aria-pressed={comparing}
+            onClick={() => setComparing(!comparing)}
+          >
+            {comparing
+              ? "Close comparison ✕"
+              : `Compare ${compareCount} site${compareCount === 1 ? "" : "s"} ▦`}
+          </button>
+
+          {!comparing && !canCompare && (
+            <p className="explorer-data-note">
+              {compareCount === 0
+                ? "Switch on 1 to 6 polar sites in the map's site menu to compare them."
+                : `At most ${COMPARE_LIMIT} sites: switch off ${compareCount - COMPARE_LIMIT} in the map's site menu.`}
+            </p>
+          )}
 
         </div>
 

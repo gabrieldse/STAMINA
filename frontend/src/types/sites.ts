@@ -25,6 +25,10 @@ export const LANDING_SITES = siteData.sites as LandingSite[];
 // The temperature map covers 80°S to the pole.
 export const MAP_LATITUDE_LIMIT = -80;
 
+// Sites the comparison grid can show (switched on, inside the 80°S map)
+export type CompareSite = { id: string; name: string };
+export const COMPARE_LIMIT = 6;
+
 export function isOnPolarMap(site: LandingSite) {
   return site.latitude <= MAP_LATITUDE_LIMIT;
 }

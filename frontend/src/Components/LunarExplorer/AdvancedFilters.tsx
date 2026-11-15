@@ -17,6 +17,8 @@ import type {
   TemperatureConfig,
 } from "../../types/temperature";
 
+import { downloadJson } from "../../utils/download";
+
 import "./AdvancedFilters.css";
 import type { FilterStates } from "../../types/explorer";
 import { buildConfiguration, parseConfiguration } from "../../filters/configuration";
@@ -31,21 +33,6 @@ type Props = {
   durationDays: number;
   temperature: TemperatureConfig;
 };
-
-function downloadJson(data: unknown, fileName: string) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], {
-    type: "application/json",
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 
 const metricKeys = Object.keys(
   CUSTOM_METRICS
