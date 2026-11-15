@@ -5,6 +5,11 @@ from SMEData.kernel_loaders import load_kernels
 
 
 class AnalysisTests(unittest.TestCase):
+    def test_launcher_health_check(self):
+        response = TestClient(app).get("/api/health")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"application": "STAMINA", "status": "ready"})
+
     def setUp(self):
         self.client = TestClient(app)
         self.payload = dict(site=dict(id="test", latitude=-89, longitude=0),

@@ -13,6 +13,31 @@ The repository is public: anyone with the link can read or clone it without
 an invitation. See [the illumination tools](Filters/README.md) for the standalone
 terrain and hourly illumination image generator included alongside the website.
 
+## Easiest way to open the site
+
+1. Install [Python 3.12 or newer](https://www.python.org/downloads/) and
+   [Node.js 22.12 or newer](https://nodejs.org/) once.
+2. [Download the project ZIP](https://github.com/gabrieldse/STAMINA/archive/refs/heads/main.zip)
+   and extract it to a folder, or clone this repository.
+3. **Windows: double-click `Open STAMINA.bat`.** On macOS/Linux, open a terminal
+   in the extracted folder and run `python3 start.py`.
+
+The launcher creates its Python environment, installs dependencies, downloads
+the required NASA maps, builds the site, starts the website and scientific API
+together, and opens your browser. **The first launch needs internet access and
+can take several minutes.** Later launches reuse the setup, map downloads and
+build. Keep the launcher window open while using the site; press **Ctrl+C** to
+stop it. No environment activation or separate server commands are needed.
+
+The usual address is **http://127.0.0.1:8080/**. If that port is busy, the
+launcher selects a nearby free port and prints the address it uses.
+Use `python start.py --no-browser` to open the printed address yourself, or
+`python start.py --setup-only` to prepare the project ahead of time.
+
+This runs the site on your own computer. A public browser-only link needs a
+server hosting both the website and Python API. The manual setup and development
+commands below remain available for contributors.
+
 ## Requirements
 
 - Python 3.12 or newer. Development has also been checked with Python 3.14.

@@ -1,5 +1,12 @@
 # Architecture and contributor guide
 
+`start.py` is the end-user launcher, with `Open STAMINA.bat` as its Windows
+entry point. It sets up `.venv`, dependencies, generated maps, and the compiled
+frontend, then serves `backend.web:app` and opens the browser after
+`/api/health` responds. Setup fingerprints live in ignored `.runtime/launcher.json`;
+changed requirements or frontend files trigger the corresponding setup step.
+The contributor commands remain in `scripts/manage.py`.
+
 ## Request flow
 
 ```text

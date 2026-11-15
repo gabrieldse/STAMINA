@@ -19,6 +19,12 @@ app = FastAPI()
 SPICE_LOCK = Lock()
 
 
+@app.get("/api/health")
+def health():
+    """Lightweight readiness check used before the launcher opens a browser."""
+    return {"application": "STAMINA", "status": "ready"}
+
+
 class VisibilityMapRequest(BaseModel):
     sun: list[float] | None = Field(default=None, min_length=3, max_length=3)
     earth: list[float] | None = Field(default=None, min_length=3, max_length=3)
