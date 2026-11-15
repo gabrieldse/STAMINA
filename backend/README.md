@@ -1,9 +1,10 @@
+For complete installation and data preparation, start with the [root README](../README.md).
+The development API uses port **8001**, matching Vite's default proxy.
+
 Run from the repository root:
 
 ```powershell
-uv venv .venv --python 3.14 --system-site-packages
-uv pip install --python .venv/Scripts/python.exe -r requirements.txt
-.venv/Scripts/python.exe -m uvicorn backend.api:app --host 127.0.0.1 --port 8000 --reload --reload-dir backend
+python scripts/manage.py api --reload
 ```
 
 Visibility follows the terrain-horizon approach of Mazarico et al. (2011),

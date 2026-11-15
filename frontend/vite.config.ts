@@ -25,5 +25,5 @@ export default defineConfig({
     // The lazily loaded Globe3D chunk is CesiumJS itself (~4 MB, ~1.1 MB gzipped).
     chunkSizeWarningLimit: 4500,
   },
-  server: { proxy: { '/api': 'http://127.0.0.1:8001' } },
+  server: { proxy: { '/api': process.env.STAMINA_API_TARGET ?? 'http://127.0.0.1:8001' } },
 })

@@ -1,6 +1,8 @@
 matplotlib
+# Optional acceleration; the backend also has a NumPy fallback.
 numba
 numpy
+pillow
 rasterio
 spiceypy
 fastapi
