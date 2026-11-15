@@ -30,6 +30,7 @@ function TimelineWindow({ durationDays, ...props }: Props) {
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(6);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const sunThreshold = props.filters.sunElevation?.enabled ? Number(props.filters.sunElevation.value) : null;
   const earthThreshold = props.filters.earthElevation?.enabled ? Number(props.filters.earthElevation.value) : null;
   const enabled = sunThreshold !== null || earthThreshold !== null;
@@ -89,19 +90,25 @@ function TimelineWindow({ durationDays, ...props }: Props) {
     <div className="explorer-timeline map-timeline">
       <div className="explorer-timeline-heading"><strong>Landing sites · time explorer</strong><span>SPICE · 1-hour samples · UTC</span></div>
       {error ? <p role="alert">{error} <button type="button" onClick={() => { setError(""); setAttempt(value => value + 1); }}>Retry</button></p> : !series ? <p role="status">Loading Sun and Earth positions…</p> : <>
-        <div className="map-time-controls">
-          <button type="button" onClick={() => { if (index === last) setIndex(0); setPlaying(!playing || index === last); }}>{playing && index < last ? "Pause" : "Play"}</button>
-          <button type="button" aria-label="Previous hour" disabled={index === 0} onClick={() => seek(index - 1)}>−1 h</button>
-          <button type="button" aria-label="Next hour" disabled={index === last} onClick={() => seek(index + 1)}>+1 h</button>
-          <label>Speed <select value={speed} onChange={event => setSpeed(Number(event.target.value))}><option value={1}>1 h / s</option><option value={6}>6 h / s</option><option value={12}>12 h / s</option></select></label>
-          <strong>{utc(series.times[index])}</strong>
-        </div>
         <label className="mission-scrubber">Observation time
           <input type="range" min={0} max={last} step={1} value={index} onChange={event => seek(Number(event.target.value))} aria-valuetext={utc(series.times[index])} />
         </label>
         <div className="explorer-timeline-labels"><span>{utc(series.times[0])}</span><span>{utc(series.times[last])}</span></div>
-        <details className="map-timeline-details">
-          <summary>Landing site visibility & details</summary>
+        {/* Bottom bar: the per-site details toggle, with the playback controls beside it */}
+        <div className="map-timeline-bar">
+          <button type="button" className="map-timeline-toggle" aria-expanded={detailsOpen} aria-controls="map-timeline-details"
+            onClick={() => setDetailsOpen(!detailsOpen)}>{detailsOpen ? "▾" : "▸"} Landing site visibility & details</button>
+          <div className="map-time-controls">
+            <button type="button" onClick={() => { if (index === last) setIndex(0); setPlaying(!playing || index === last); }}>{playing && index < last ? "Pause" : "Play"}</button>
+            <button type="button" aria-label="Previous hour" disabled={index === 0} onClick={() => seek(index - 1)}>−1 h</button>
+            <button type="button" aria-label="Next hour" disabled={index === last} onClick={() => seek(index + 1)}>+1 h</button>
+            <label>Speed <select value={speed} onChange={event => setSpeed(Number(event.target.value))}>
+              {[1, 6, 12, 24, 48].map(hours => <option key={hours} value={hours}>{hours} h / s</option>)}
+            </select></label>
+            <strong>{utc(series.times[index])}</strong>
+          </div>
+        </div>
+        {detailsOpen && <div className="map-timeline-details" id="map-timeline-details">
         <p>{enabled ? "Green: all enabled elevation thresholds met · Dark: at least one threshold fails" : "Enable Sun elevation or Earth elevation to highlight matching areas and time windows."}</p>
         <div className="map-site-timelines">
           {rows.map(({ site, sun, earth, passes, runs }) => <div className="map-site-time-row" key={site.id}>
@@ -114,7 +121,7 @@ function TimelineWindow({ durationDays, ...props }: Props) {
           </div>)}
         </div>
         <small>Animated ephemeris preview, not live telemetry. Elevation filters only; terrain shadows excluded. Window follows mission start and duration.</small>
-        </details>
+        </div>}
       </>}
     </div>
   </>;

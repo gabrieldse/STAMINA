@@ -49,8 +49,9 @@ function formatKelvin(value: number | null | undefined) {
 }
 
 export default function LunarExplorer() {
-  const [leftPanelOpen, setLeftPanelOpen] = useState(true);
-  const [rightPanelOpen, setRightPanelOpen] = useState(true);
+  // Both side panels start folded so the map gets the room; the toolbar opens them.
+  const [leftPanelOpen, setLeftPanelOpen] = useState(false);
+  const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const analysisVersion = useRef(0);
   // Selected lunar landing site
   const [selectedSite, setSelectedSite] =

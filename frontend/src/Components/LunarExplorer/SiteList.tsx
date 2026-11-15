@@ -68,7 +68,8 @@ export default function SiteList({
   onPreset,
   onOpenChange,
 }: Props) {
-  const [isOpen, setIsOpen] = useState(true);
+  // Starts folded; MapPanel's menuOpen mirrors this default.
+  const [isOpen, setIsOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState(
     () => new Set(groups.filter((group) => group.startOpen).map((group) => group.key))
   );

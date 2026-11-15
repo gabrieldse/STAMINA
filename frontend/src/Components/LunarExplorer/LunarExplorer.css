@@ -438,12 +438,14 @@
 .map-timeline .mission-scrubber input { margin: 2px 0; }
 .map-timeline .explorer-timeline-labels { margin-top: 2px; font-size: 10px; }
 .map-timeline-details { margin-top: 6px; font-size: 11px; }
-.map-timeline-details summary { cursor: pointer; color: #c6c6c6; padding: 2px 0; }
-.map-timeline-details summary:focus-visible { outline: 2px solid #e5bd59; outline-offset: 2px; }
-.map-time-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 6px; font-size: 12px; }
+/* Bottom bar: details toggle on the left, playback controls in the middle */
+.map-timeline-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px; margin-top: 6px; }
+.map-timeline-toggle { padding: 2px 0; border: 0; background: none; color: #c6c6c6; font: inherit; font-size: 11px; cursor: pointer; }
+.map-timeline-toggle:focus-visible { outline: 2px solid #e5bd59; outline-offset: 2px; }
+.map-time-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 0 auto; font-size: 12px; }
 .map-time-controls button, .map-time-controls select, .map-timeline > p button { color: #eee; background: #252525; border: 1px solid #666; border-radius: 5px; padding: 5px 8px; cursor: pointer; }
 .map-time-controls button:disabled { opacity: .4; cursor: default; }
-.map-time-controls strong { margin-left: auto; font-variant-numeric: tabular-nums; color: #e5bd59; }
+.map-time-controls strong { margin-left: 6px; font-variant-numeric: tabular-nums; color: #e5bd59; }
 .map-site-timelines { max-height: 125px; overflow: auto; margin: 10px 0; }
 .map-site-time-row { display: grid; grid-template-columns: 140px minmax(65px, 1fr) 220px; align-items: center; gap: 10px; margin: 7px 0; font-size: 11px; }
 .map-site-time-row > button { text-align: left; color: #ddd; background: transparent; border: 0; padding: 2px; cursor: pointer; font: inherit; }
@@ -944,4 +946,16 @@
   .explorer-left-panel .temperature-todo {
     display: none;
   }
+}
+
+/* Panel show/hide buttons: same type size as the "Landing sites" menu title */
+.explorer-panel-toggle {
+  padding: 4px 9px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.explorer-panel-toggle svg {
+  width: 14px;
+  height: 14px;
 }

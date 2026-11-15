@@ -299,7 +299,7 @@ export default function MapPanel({
 
   // Comparison: the switched-on sites inside the polar map, at most COMPARE_LIMIT shown.
   const [cropKm, setCropKm] = useState(80);
-  const [menuOpen, setMenuOpen] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
   const compareSites = useMemo<CompareSite[]>(
     () => mapSites
       .filter((site) => site.latitude <= -80)
@@ -477,37 +477,27 @@ export default function MapPanel({
 
   return (
     <section className="explorer-map">
-      <div className="map-header">
-        {comparing ? (
-          <>
-            <strong>
-              Comparing {comparedIds.length} site{comparedIds.length === 1 ? "" : "s"}
-            </strong>
-            <span className="compare-controls">
-              {compareSites.length > COMPARE_LIMIT &&
-                `First ${COMPARE_LIMIT} of ${compareSites.length} · `}
-              <label>
-                Crop{" "}
-                <select value={cropKm} onChange={(e) => setCropKm(Number(e.target.value))}>
-                  {CROP_SIZES_KM.map((km) => (
-                    <option key={km} value={km}>{km} × {km} km</option>
-                  ))}
-                </select>
-              </label>
-              <button type="button" onClick={onCompareClose}>Close ✕</button>
-            </span>
-          </>
-        ) : (
-          <>
-            <strong>{activeView === "3d" ? "Moon" : "Lunar South Pole"}</strong>
-            <span>
-              {activeView === "3d"
-                ? "LROC WAC mosaic · Apollo, Artemis III and custom sites"
-                : `${temperature.enabled ? "Diviner surface temperature" : "LOLA relief"} · 80°S to the pole`}
-            </span>
-          </>
-        )}
-      </div>
+      {/* Only the comparison needs a bar (crop size, close); the 2D/3D thumbnails name the view. */}
+      {comparing && (
+        <div className="map-header">
+          <strong>
+            Comparing {comparedIds.length} site{comparedIds.length === 1 ? "" : "s"}
+          </strong>
+          <span className="compare-controls">
+            {compareSites.length > COMPARE_LIMIT &&
+              `First ${COMPARE_LIMIT} of ${compareSites.length} · `}
+            <label>
+              Crop{" "}
+              <select value={cropKm} onChange={(e) => setCropKm(Number(e.target.value))}>
+                {CROP_SIZES_KM.map((km) => (
+                  <option key={km} value={km}>{km} × {km} km</option>
+                ))}
+              </select>
+            </label>
+            <button type="button" onClick={onCompareClose}>Close ✕</button>
+          </span>
+        </div>
+      )}
 
       <div className="map-workspace map-workspace-embed">
         {/* The 2D map stays loaded in 3D: it still supplies site temperatures. */}
