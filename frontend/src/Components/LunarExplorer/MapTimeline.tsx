@@ -8,7 +8,8 @@ type PositionSeries = { times: string[]; sun: number[][]; earth: number[][] };
 type Props = Omit<ComponentProps<typeof MapPanel>, "positions" | "positionStatus"> & { durationDays: number };
 const utc = (value: string) => value.replace("T", " ").replace(":00Z", " UTC");
 // No answer from the backend (not started, or another server on its port behind the /api proxy)
-const API_DOWN = "Scientific API not running. From the repository root run: python -m uvicorn backend.api:app --port 8000, then Retry.";
+// (uv installs the Python requirements itself; with pip, install requirements.txt first)
+const API_DOWN = "Scientific API not running. From the repository root run: uv run --with-requirements requirements.txt python -m uvicorn backend.api:app --port 8000 — then Retry.";
 
 function elevation(vector: number[], latitude: number, longitude: number) {
   const lat = latitude * Math.PI / 180, lon = longitude * Math.PI / 180;
