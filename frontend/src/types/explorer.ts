@@ -53,6 +53,7 @@ export type LunarSite = {
 };
 
 export type ScientificResult = {
+  timeline?: MissionTimelineData;
   status: "computed" | "unavailable";
   siteId: string;
   sunlightPercent?: number;
@@ -62,3 +63,13 @@ export type ScientificResult = {
   message?: string;
   customFilterResults?: CustomFilterEvaluation[];
 };
+
+export type MissionTimelineData = {
+  startUtc: string;
+  endUtc: string;
+  sampleCount: number;
+  instant: boolean;
+  sun: VisibilitySegment[];
+  earth: VisibilitySegment[];
+};
+export type VisibilitySegment = { start: number; end: number; visible: boolean };

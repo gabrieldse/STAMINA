@@ -11,7 +11,7 @@ import type {
 
 const API_URL =
   import.meta.env.VITE_API_URL ??
-  "http://localhost:8000";
+  "";
 
 export async function analyzeLunarSite(
   site: LunarSite,
@@ -20,6 +20,8 @@ export async function analyzeLunarSite(
   filters: FilterStates,
   customRules: CustomFilterRule[]
 ): Promise<ScientificResult> {
+  const mode = filters.analysisMode?.value === "instant" ? "instant" : "period";
+  const analysisDuration = mode === "instant" ? 1 : durationDays;
   // Validate lunar coordinates
   if (
     site.latitude == null ||
@@ -34,9 +36,9 @@ export async function analyzeLunarSite(
 
   // Validate analysis duration
   if (
-    !Number.isInteger(durationDays) ||
-    durationDays < 1 ||
-    durationDays > 365
+    !Number.isInteger(analysisDuration) ||
+    analysisDuration < 1 ||
+    analysisDuration > 365
   ) {
     throw new Error("Invalid analysis duration.");
   }
@@ -52,6 +54,7 @@ export async function analyzeLunarSite(
   );
 
   // Collect enabled user-defined filters
+  activeFilters.analysisMode = mode;
   const activeCustomRules = customRules.filter(
     (rule) => rule.enabled
   );
@@ -59,7 +62,7 @@ export async function analyzeLunarSite(
   const requestBody = {
     site,
     date,
-    durationDays,
+    durationDays: analysisDuration,
     filters: activeFilters,
     customFilters: activeCustomRules,
   };
@@ -76,8 +79,9 @@ export async function analyzeLunarSite(
   );
 
   if (!response.ok) {
+    const body = await response.json().catch(() => null);
     throw new Error(
-      `Scientific API error: ${response.status}`
+      typeof body?.detail === "string" ? body.detail : `Scientific API error: ${response.status}. Check the site, date and filters.`
     );
   }
 

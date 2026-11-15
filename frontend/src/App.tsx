@@ -2,7 +2,7 @@
 import { useState } from "react";
 
 import LunarExplorer from "./Components/LunarExplorer/LunarExplorer";
-import MissionTutorial from "./Components/MissionTutorial/MissionTutorial";
+import SiteDemo from "./Components/SiteDemo/SiteDemo";
 import WelcomeModal from "./Components/WelcomeModal/WelcomeModal";
 
 import "./App.css";
@@ -21,26 +21,6 @@ export default function App() {
   function exploreFreely() {
     setShowWelcome(false);
     setMode("explore");
-  }
-
-  // GUIDED MISSION EXPERIENCE
-  if (mode === "tutorial") {
-    return (
-      <>
-        <div className="tutorial-exit-bar">
-          <span>STAMINA / GUIDED MISSION</span>
-
-          <button
-            type="button"
-            onClick={exploreFreely}
-          >
-            Exit Tutorial ✕
-          </button>
-        </div>
-
-        <MissionTutorial />
-      </>
-    );
   }
 
   // SCIENTIFIC WORKSPACE
@@ -90,7 +70,7 @@ export default function App() {
             className="stamina-app-tutorial-button"
             onClick={startTutorial}
           >
-            Guided Mission ↗
+            Site Demo ↗
           </button>
 
         </div>
@@ -111,6 +91,7 @@ export default function App() {
       </footer>
 
       {/* WELCOME MODAL */}
+      {mode === "tutorial" && !showWelcome && <SiteDemo onClose={exploreFreely} />}
       {showWelcome && (
         <WelcomeModal
           onStartTutorial={startTutorial}

@@ -3,3 +3,5 @@ numba
 numpy
 rasterio
 spiceypy
+fastapi
+uvicorn

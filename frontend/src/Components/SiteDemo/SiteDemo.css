@@ -1,0 +1,13 @@
+.site-demo-card { position: fixed; bottom: 36px; left: 50%; transform: translateX(-50%); z-index: 900; width: min(430px, calc(100vw - 32px)); box-sizing: border-box; padding: 20px; background: #252b32; color: #f1f5f9; border: 1px solid #82c1ff; border-radius: 14px; box-shadow: 0 12px 50px #0009; max-height: 45vh; overflow-y: auto; }
+.site-demo-card-top { bottom: auto; top: 76px; }
+.site-demo-heading, .site-demo-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.site-demo-heading span { font-size: 11px; letter-spacing: 1px; color: #a9d5ff; }
+.site-demo-card h2 { margin: 14px 0 8px; font-size: 19px; }
+.site-demo-card p { margin: 0 0 18px; font-size: 13px; line-height: 1.65; }
+.site-demo-card progress { width: 100%; height: 4px; accent-color: #82c1ff; }
+.site-demo-card button { cursor: pointer; padding: 8px 12px; border: 1px solid #718096; border-radius: 6px; background: #344253; color: white; }
+.site-demo-actions button:last-child { background: #a9d5ff; color: #18222d; border-color: #a9d5ff; }
+.site-demo-card button:disabled { opacity: .4; cursor: default; }
+.site-demo-card button:focus-visible { outline: 2px solid white; outline-offset: 3px; }
+.site-demo-highlight { outline: 3px solid #82c1ff; outline-offset: -3px; }
+@media (max-width: 700px) { .site-demo-card { bottom: 10px; max-height: 34vh; padding: 14px; } .site-demo-card-top { bottom: auto; top: 66px; } }

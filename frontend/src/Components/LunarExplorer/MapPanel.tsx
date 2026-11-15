@@ -13,6 +13,8 @@ import type {
 
 import { LANDING_SITES, isOnPolarMap } from "../../types/sites";
 
+import type { BodyPositions } from "./MapTimeline";
+
 import SiteInfoCard from "./SiteInfoCard";
 import SiteList from "./SiteList";
 import type { LandingSite } from "../../types/sites";
@@ -23,6 +25,9 @@ const MAP_SITES = LANDING_SITES.filter(isOnPolarMap).map(
 );
 
 type Props = {
+  date: string;
+  positions: BodyPositions | null;
+  positionStatus: string;
   selectedSite: LunarSite | null;
   filters: FilterStates;
   onSiteSelect: (site: LunarSite) => void;
@@ -60,6 +65,8 @@ function formatCoordinates(latitude: number, longitude: number) {
 }
 
 export default function MapPanel({
+  positions,
+  positionStatus,
   selectedSite,
   filters,
   onSiteSelect,
@@ -69,6 +76,20 @@ export default function MapPanel({
 }: Props) {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [viewerReady, setViewerReady] = useState(false);
+  const terrainEnabled = Boolean(filters.terrain?.enabled && filters.terrain.value);
+  useEffect(() => {
+    if (viewerReady) postToViewer({ type: "stamina:terrain-overlay", enabled: terrainEnabled });
+  }, [viewerReady, terrainEnabled]);
+  const sunThreshold = filters.sunElevation?.enabled ? Number(filters.sunElevation.value) : null;
+  const earthThreshold = filters.earthElevation?.enabled ? Number(filters.earthElevation.value) : null;
+  useEffect(() => {
+    if (!viewerReady) return;
+    postToViewer({ type: "stamina:elevation-filter", config: positions && (sunThreshold !== null || earthThreshold !== null)
+      ? { ...positions, sunThreshold, earthThreshold } : null });
+  }, [viewerReady, positions, sunThreshold, earthThreshold]);
+  const elevationStatus = positionStatus || (positions
+    ? positions.utc.replace("T", " ").replace("Z", " UTC") + " ? Dimmed: fails an enabled elevation threshold ? No terrain shadows"
+    : "");
   // Site whose info card the user closed; it reopens for the next site.
   const [closedInfoId, setClosedInfoId] = useState<string | null>(null);
   const infoSite = selectedSite?.details;
@@ -76,7 +97,7 @@ export default function MapPanel({
   // Messages from the map: readiness, clicked sites and selection area.
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
-      if (event.origin !== window.location.origin) return;
+      if (event.origin !== window.location.origin || event.source !== frameRef.current?.contentWindow) return;
       if (!isViewerMessage(event.data)) return;
 
       const message = event.data;
@@ -155,7 +176,7 @@ export default function MapPanel({
   }, [viewerReady, focusId, focusOnMap]);
 
   const activeFilters = Object.entries(filters)
-    .filter(([, state]) => state.enabled)
+    .filter(([id, state]) => id !== "analysisMode" && state.enabled)
     .map(([id]) => id);
 
   return (
@@ -192,6 +213,8 @@ export default function MapPanel({
       </div>
 
       <div className="map-footer">
+        {terrainEnabled && <span>LOLA contours: 500 m intervals · Bold: 1,000 m · Heights relative to the lunar reference sphere</span>}
+        {elevationStatus && <span role="status">{elevationStatus}</span>}
         <span>
           Selected: {selectedSite?.name ?? "None (click the map)"}
         </span>

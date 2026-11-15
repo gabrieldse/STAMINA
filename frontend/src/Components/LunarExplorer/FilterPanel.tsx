@@ -46,11 +46,25 @@ export default function FilterPanel({
         Customize the environmental constraints
         for your lunar site.
       </p>
+      <p>Elevation filters dim failing areas at the start date, 00:00 UTC. Run Analysis to update mission results and the timeline.</p>
 
       {filterRegistry.map((filter) => {
         const state = filters[filter.id];
 
         if (!state) return null;
+
+        if (filter.id === "analysisMode") return (
+          <div className="filter-item" key={filter.id}>
+            <label className="filter-heading" htmlFor="analysis-mode"><strong>{filter.label}</strong></label>
+            <select id="analysis-mode" value={String(state.value)}
+              onChange={event => updateFilter(filter.id, { enabled: true, value: event.target.value })}>
+              {filter.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+            <small>{state.value === "instant"
+              ? "Visibility at 00:00 UTC on the selected date. No mission duration or outage lengths."
+              : "Visibility and outages over the selected mission duration."}</small>
+          </div>
+        );
 
         return (
           <div className="filter-item" key={filter.id}>
@@ -78,6 +92,7 @@ export default function FilterPanel({
 
                 <input
                   type="range"
+                  aria-label={`${filter.label} minimum`}
                   min={filter.min}
                   max={filter.max}
                   step={filter.step ?? 1}

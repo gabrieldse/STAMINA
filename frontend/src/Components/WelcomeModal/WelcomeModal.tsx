@@ -37,13 +37,11 @@ export default function WelcomeModal({
           <div className="welcome-option featured">
             <div className="welcome-option-icon">🚀</div>
 
-            <h3>Guided Mission Experience</h3>
+            <h3>Discover the Site</h3>
 
             <p>
-              Take the role of a mission planner.
-              Configure a lunar expedition, face an
-              unexpected launch delay, and explore
-              possible landing site alternatives.
+              Explore the actual map, try the environmental filters,
+              run an analysis, and learn to read your mission timeline.
             </p>
 
             <button
@@ -51,7 +49,7 @@ export default function WelcomeModal({
               className="welcome-primary"
               onClick={onStartTutorial}
             >
-              Begin Tutorial →
+              Start Site Demo →
             </button>
           </div>
 
@@ -61,7 +59,7 @@ export default function WelcomeModal({
             <h3>Free Exploration</h3>
 
             <p>
-              Skip the tutorial and discover the
+              Skip the demo and discover the
               STAMINA platform at your own pace.
             </p>
 

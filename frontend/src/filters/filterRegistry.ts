@@ -32,9 +32,9 @@ export const filterRegistry: FilterDefinition[] = [
   {
     id: "terrain",
     label: "Terrain overlay",
-    description: "Display lunar topography",
+    description: "Elevation contours every 500 m (LOLA); works over relief and temperature layers",
     type: "toggle",
-    defaultValue: false,
+    defaultValue: true,
   },
 
   {
@@ -42,7 +42,7 @@ export const filterRegistry: FilterDefinition[] = [
     label: "Analysis mode",
     description: "Choose how to analyze the site",
     type: "select",
-    defaultValue: "instant",
+    defaultValue: "period",
     options: [
       { label: "Single instant", value: "instant" },
       { label: "Mission duration", value: "period" },
@@ -55,7 +55,7 @@ export function createInitialFilters(): FilterStates {
     filterRegistry.map((filter) => [
       filter.id,
       {
-        enabled: false,
+        enabled: filter.id === "analysisMode",
         value: filter.defaultValue,
       },
     ])

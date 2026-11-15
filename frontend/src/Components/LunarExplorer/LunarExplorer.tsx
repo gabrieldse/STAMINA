@@ -1,8 +1,9 @@
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import MissionTimeline from "./MissionTimeline";
 
 import FilterPanel from "./FilterPanel";
-import MapPanel from "./MapPanel";
+import MapTimeline from "./MapTimeline";
 import AdvancedFilters from "./AdvancedFilters";
 
 import { createInitialFilters } from "../../filters/filterRegistry";
@@ -46,6 +47,9 @@ function formatKelvin(value: number | null | undefined) {
 }
 
 export default function LunarExplorer() {
+  const [leftPanelOpen, setLeftPanelOpen] = useState(true);
+  const [rightPanelOpen, setRightPanelOpen] = useState(true);
+  const analysisVersion = useRef(0);
   // Selected lunar landing site
   const [selectedSite, setSelectedSite] =
     useState<LunarSite | null>(null);
@@ -90,10 +94,11 @@ export default function LunarExplorer() {
     selectedSite.longitude <= 360;
 
   // Validate duration
+  const instantMode = filters.analysisMode?.value === "instant";
   const validDuration =
-    Number.isInteger(durationDays) &&
+    instantMode || (Number.isInteger(durationDays) &&
     durationDays >= 1 &&
-    durationDays <= 365;
+    durationDays <= 365);
 
   // Check if scientific analysis can run
   const canAnalyze =
@@ -103,8 +108,8 @@ export default function LunarExplorer() {
     !loading;
 
   // Count enabled standard filters
-  const activeFilterCount = Object.values(filters)
-    .filter((filter) => filter.enabled).length;
+  const activeFilterCount = Object.entries(filters)
+    .filter(([id, filter]) => id !== "analysisMode" && filter.enabled).length;
 
   // Count enabled custom filters
   const activeCustomFilterCount = customRules
@@ -126,6 +131,7 @@ export default function LunarExplorer() {
 
   // Clear previous scientific results
   function clearResults() {
+    analysisVersion.current += 1;
     setResult(null);
     setError("");
   }
@@ -170,6 +176,7 @@ export default function LunarExplorer() {
     setLoading(true);
     clearResults();
 
+    const version = analysisVersion.current;
     try {
       // Send all analysis parameters to backend
       const data = await analyzeLunarSite(
@@ -181,7 +188,7 @@ export default function LunarExplorer() {
       );
 
       // Store backend response
-      setResult(data);
+      if (version === analysisVersion.current) setResult(data);
 
     } catch (error) {
       console.error(
@@ -189,7 +196,7 @@ export default function LunarExplorer() {
         error
       );
 
-      setError(
+      if (version === analysisVersion.current) setError(
         error instanceof Error
           ? error.message
           : "Scientific engine unavailable."
@@ -201,12 +208,12 @@ export default function LunarExplorer() {
   }
 
   return (
-    <main className="lunar-explorer">
+    <main className={`lunar-explorer${leftPanelOpen ? "" : " left-panel-hidden"}${rightPanelOpen ? "" : " right-panel-hidden"}`}>
 
       {/* =====================================
           LEFT SIDEBAR — FILTERS
       ===================================== */}
-      <aside className="explorer-left-panel">
+      <aside id="explorer-filters-panel" className="explorer-left-panel" hidden={!leftPanelOpen}>
 
         <div className="explorer-pane-caption">
           <span>ENVIRONMENTAL LAYERS</span>
@@ -228,6 +235,13 @@ export default function LunarExplorer() {
 
         {/* ADVANCED / UPLOADED FILTERS */}
         <AdvancedFilters
+          filters={filters}
+          onImport={(configuration) => {
+            if (configuration.filters) setFilters(configuration.filters);
+            if (configuration.temperature) setTemperature(configuration.temperature);
+            setCustomRules(configuration.rules);
+            clearResults();
+          }}
           rules={customRules}
           onChange={changeCustomRules}
           evaluations={
@@ -247,6 +261,12 @@ export default function LunarExplorer() {
         {/* MAP TOOLBAR */}
         <div className="explorer-map-toolbar">
 
+          <button type="button" className="explorer-panel-toggle" aria-controls="explorer-filters-panel" aria-expanded={leftPanelOpen}
+            title={`${leftPanelOpen ? "Hide" : "Show"} filters panel`} onClick={() => setLeftPanelOpen(open => !open)}>
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="2" y="3" width="16" height="14" rx="3" stroke="currentColor" strokeWidth="1.5" /><path d="M7 3v14" stroke="currentColor" strokeWidth="1.5" /><path d={leftPanelOpen ? "m12 7-3 3 3 3" : "m10 7 3 3-3 3"} stroke="currentColor" strokeWidth="1.5" /></svg>
+            <span>{leftPanelOpen ? "Hide filters" : "Show filters"}</span>
+          </button>
+
           <div>
             <strong>Lunar Surface Explorer</strong>
             <span>South Pole Region</span>
@@ -258,11 +278,18 @@ export default function LunarExplorer() {
               : "No site selected"}
           </span>
 
+          <button type="button" className="explorer-panel-toggle" aria-controls="explorer-inspector-panel" aria-expanded={rightPanelOpen}
+            title={`${rightPanelOpen ? "Hide" : "Show"} site details panel`} onClick={() => setRightPanelOpen(open => !open)}>
+            <span>{rightPanelOpen ? "Hide details" : "Show details"}</span>
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="2" y="3" width="16" height="14" rx="3" stroke="currentColor" strokeWidth="1.5" /><path d="M13 3v14" stroke="currentColor" strokeWidth="1.5" /><path d={rightPanelOpen ? "m8 7 3 3-3 3" : "m10 7-3 3 3 3"} stroke="currentColor" strokeWidth="1.5" /></svg>
+          </button>
+
         </div>
 
         {/* INTERACTIVE MAP */}
-        <div className="explorer-map-area">
-          <MapPanel
+        <MapTimeline
+            date={date}
+            durationDays={durationDays}
             selectedSite={selectedSite}
             filters={filters}
             onSiteSelect={changeSite}
@@ -270,31 +297,13 @@ export default function LunarExplorer() {
             temperature={temperature}
             onTemperatureSelection={setTemperatureSelection}
           />
-        </div>
-
-        {/* MISSION TIMELINE */}
-        <div className="explorer-timeline">
-
-          <div className="explorer-timeline-heading">
-            <strong>Mission Timeline</strong>
-            <span>Visibility data pending</span>
-          </div>
-
-          <div className="explorer-timeline-track" />
-
-          <div className="explorer-timeline-labels">
-            <span>Start: {date}</span>
-            <span>{durationDays} Earth days</span>
-          </div>
-
-        </div>
 
       </section>
 
       {/* =====================================
           RIGHT SIDEBAR — SCIENTIFIC ANALYSIS
       ===================================== */}
-      <aside className="explorer-right-panel">
+      <aside id="explorer-inspector-panel" className="explorer-right-panel" hidden={!rightPanelOpen}>
 
         {/* PANEL HEADER */}
         <div className="explorer-inspector-heading">
@@ -389,7 +398,7 @@ export default function LunarExplorer() {
 
             {/* START DATE */}
             <label>
-              Start date (UTC)
+              {instantMode ? "Observation date (00:00 UTC)" : "Start date (UTC)"}
 
               <input
                 type="date"
@@ -402,7 +411,7 @@ export default function LunarExplorer() {
             </label>
 
             {/* MISSION DURATION */}
-            <label>
+            {!instantMode && <label>
               Analysis duration (Earth days)
 
               <input
@@ -419,7 +428,7 @@ export default function LunarExplorer() {
                   clearResults();
                 }}
               />
-            </label>
+            </label>}
 
             {/* ANALYSIS BUTTON */}
             <button
@@ -465,10 +474,10 @@ export default function LunarExplorer() {
 
             {/* SOLAR AVAILABILITY */}
             <div>
-              <span>Solar availability</span>
+              <span>{instantMode ? "Sun at observation time" : "Solar availability"}</span>
 
               <strong>
-                {formatMetric(
+                {instantMode && isComputed ? (result?.sunlightPercent === 100 ? "Above threshold" : "Below threshold") : formatMetric(
                   result?.sunlightPercent,
                   "%"
                 )}
@@ -477,10 +486,10 @@ export default function LunarExplorer() {
 
             {/* EARTH VISIBILITY */}
             <div>
-              <span>Earth visibility</span>
+              <span>{instantMode ? "Earth at observation time" : "Earth visibility"}</span>
 
               <strong>
-                {formatMetric(
+                {instantMode && isComputed ? (result?.earthVisibilityPercent === 100 ? "Above threshold" : "Below threshold") : formatMetric(
                   result?.earthVisibilityPercent,
                   "%"
                 )}
@@ -488,7 +497,7 @@ export default function LunarExplorer() {
             </div>
 
             {/* MAXIMUM DARKNESS */}
-            <div>
+            {!instantMode && <div>
               <span>Maximum darkness</span>
 
               <strong>
@@ -497,10 +506,10 @@ export default function LunarExplorer() {
                   " h"
                 )}
               </strong>
-            </div>
+            </div>}
 
             {/* COMMUNICATION BLACKOUT */}
-            <div>
+            {!instantMode && <div>
               <span>Communication blackout</span>
 
               <strong>
@@ -509,14 +518,20 @@ export default function LunarExplorer() {
                   " h"
                 )}
               </strong>
-            </div>
+            </div>}
 
           </div>
 
         </div>
 
+        {result?.timeline && <details className="explorer-inspector-section">
+          <summary>Selected site analysis · 10-minute detail</summary>
+          <MissionTimeline key={`${selectedSite?.id}-${date}-${durationDays}-${loading}`} data={result.timeline} loading={loading} />
+        </details>}
+
         {/* SCIENTIFIC ENGINE STATUS */}
         <div className="explorer-engine-status">
+          {result?.status === "computed" && result.message && <p>{result.message}</p>}
 
           {/* API ERRORS */}
           {error && (

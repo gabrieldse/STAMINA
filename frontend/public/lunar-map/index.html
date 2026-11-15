@@ -198,6 +198,122 @@ const view = { x: 0, y: 0, k: 1 };  // centre in metres, pixels per metre
 let appSites = [];
 // Plain Moon base map from LOLA: hillshade (uint8) and elevation (int16 m, -32768 = no data).
 let base = null;
+let terrainOverlayEnabled = false, terrainContours = null;
+function buildTerrainContours() {
+  if (!base || terrainContours) return;
+  const minor = new Path2D(), major = new Path2D(), n = meta.size;
+  for (let row=0; row<n-1; row++) for (let col=0; col<n-1; col++) {
+    const i=row*n+col, h=[base.elev[i],base.elev[i+1],base.elev[i+n+1],base.elev[i+n]];
+    if (h.includes(-32768)) continue;
+    const corners=[[col+.5,row+.5],[col+1.5,row+.5],[col+1.5,row+1.5],[col+.5,row+1.5]];
+    for (let level=Math.ceil(Math.min(...h)/500)*500; level<Math.max(...h); level+=500) {
+      const points=[];
+      for (let a=0; a<4; a++) {
+        const b=(a+1)%4;
+        if ((h[a]>level)===(h[b]>level)) continue;
+        const t=(level-h[a])/(h[b]-h[a]);
+        points.push([corners[a][0]+t*(corners[b][0]-corners[a][0]),corners[a][1]+t*(corners[b][1]-corners[a][1])]);
+      }
+      const path=level%1000===0 ? major : minor;
+      // Resolve saddle cells consistently using the cell-centre elevation.
+      if (points.length===4 && (h.reduce((a,b)=>a+b,0)/4>level)!==(h[0]>level)) points.push(points.shift());
+      for (let p=0; p+1<points.length; p+=2) {
+        path.moveTo(...points[p]); path.lineTo(...points[p+1]);
+      }
+    }
+  }
+  terrainContours={minor,major};
+}
+function drawTerrainContours(c,rpx) {
+  if (!terrainOverlayEnabled || !terrainContours) return;
+  const scale=2*rpx/meta.size;
+  ctx.save(); ctx.translate(c.sx-rpx,c.sy-rpx); ctx.scale(scale,scale);
+  ctx.strokeStyle="rgba(0,0,0,.65)"; ctx.lineWidth=3*dpr()/scale;
+  ctx.stroke(terrainContours.major);
+  ctx.strokeStyle="rgba(108,239,224,.65)"; ctx.lineWidth=.7*dpr()/scale;
+  ctx.stroke(terrainContours.minor);
+  ctx.strokeStyle="#adfff1"; ctx.lineWidth=1.3*dpr()/scale;
+  ctx.stroke(terrainContours.major); ctx.restore();
+}
+let elevationMask = null;
+let elevationNormals = null;
+function applyElevationFilter(config) {
+  elevationMask = null;
+  if (!config) { draw(); return; }
+  const n = 256, image = document.createElement("canvas");
+  image.width = image.height = n;
+  const context = image.getContext("2d"), pixels = context.createImageData(n,n);
+  // Surface normals are time-independent; reuse them during playback.
+  if (!elevationNormals) {
+    elevationNormals = new Float64Array(n*n*3);
+    for (let row=0; row<n; row++) for (let col=0; col<n; col++) {
+      const x=((col+.5)/n*2-1)*meta.radiusM, y=(1-(row+.5)/n*2)*meta.radiusM;
+      if (Math.hypot(x,y)>meta.radiusM) continue;
+      const ll=toLatLon(x,y), lat=ll.lat*Math.PI/180, lon=ll.lon*Math.PI/180;
+      elevationNormals.set([Math.cos(lat)*Math.cos(lon),Math.cos(lat)*Math.sin(lon),Math.sin(lat)], (row*n+col)*3);
+    }
+  }
+  const bodies = ["sun", "earth"].filter(body => config[`${body}Threshold`] !== null)
+    .map(body => ({ vector: config[body], sine: Math.sin(config[`${body}Threshold`]*Math.PI/180) }));
+  const radius = meta.moonRadiusM/1000;
+  for (let i=0; i<n*n; i++) {
+    const ux=elevationNormals[i*3], uy=elevationNormals[i*3+1], uz=elevationNormals[i*3+2];
+    if (uz === 0) continue;
+    for (const body of bodies) {
+      const x=body.vector[0]-radius*ux, y=body.vector[1]-radius*uy, z=body.vector[2]-radius*uz;
+      if ((x*ux+y*uy+z*uz)/Math.hypot(x,y,z) <= body.sine) {
+        pixels.data[i*4+3]=185;
+        break;
+      }
+    }
+  }
+  context.putImageData(pixels,0,0);
+  elevationMask=image;
+  draw();
+}
+let terrainMeta = null;
+const terrainTiles = new Map();
+function terrainTile(z, x, y) {
+  const key = `${z}/${x}/${y}`;
+  if (terrainTiles.has(key)) {
+    const tile = terrainTiles.get(key);
+    terrainTiles.delete(key); terrainTiles.set(key, tile);
+    return tile;
+  }
+  const tile = new Image();
+  terrainTiles.set(key, tile);
+  tile.onload = () => requestAnimationFrame(draw);
+  tile.onerror = () => { tile.failed = true; };
+  tile.src = `data/terrain/${key}.png`;
+  // Bound decoded image memory during long pan/zoom sessions.
+  if (terrainTiles.size > 384) terrainTiles.delete(terrainTiles.keys().next().value);
+  return tile;
+}
+function drawTerrain(c, rpx) {
+  if (!terrainMeta || showTemperature()) return;
+  const z = Math.min(terrainMeta.maxZoom, Math.max(0, Math.ceil(Math.log2(2*rpx / terrainMeta.tileSize))));
+  const count = 2**z, span = 2*rpx/count;
+  const left = c.sx-rpx, top = c.sy-rpx;
+  const x0 = Math.max(0, Math.floor(-left/span)), x1 = Math.min(count-1, Math.floor((canvas.width-left)/span));
+  const y0 = Math.max(0, Math.floor(-top/span)), y1 = Math.min(count-1, Math.floor((canvas.height-top)/span));
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  for (let y=y0; y<=y1; y++) for (let x=x0; x<=x1; x++) {
+    const tile = terrainTile(z,x,y);
+    if (tile.complete && tile.naturalWidth) ctx.drawImage(tile,left+x*span,top+y*span,span+.25,span+.25);
+    else {
+      // Keep a lower level visible while the detailed tile loads.
+      for (let parent=z-1; parent>=0; parent--) {
+        const factor=2**(z-parent), px=Math.floor(x/factor), py=Math.floor(y/factor);
+        const fallback=terrainTile(parent,px,py), part=terrainMeta.tileSize/factor;
+        if (fallback.complete && fallback.naturalWidth) {
+          ctx.drawImage(fallback,(x%factor)*part,(y%factor)*part,part,part,left+x*span,top+y*span,span+.25,span+.25);
+          break;
+        }
+      }
+    }
+  }
+}
 // Colour range of the temperature image, shown as a legend next to the scale bar (null = plain Moon).
 let legend = null;
 const showTemperature = () => $("tempOn").checked;
@@ -363,7 +479,10 @@ function draw() {
   ctx.fillStyle = "#000"; ctx.fill();
   ctx.imageSmoothingEnabled = (2 * rpx) / meta.size < 2;  // crisp pixels when zoomed in
   ctx.drawImage(image, c.sx - rpx, c.sy - rpx, 2 * rpx, 2 * rpx);
+  drawTerrain(c, rpx);
   if (selMask) ctx.drawImage(maskImage, c.sx - rpx, c.sy - rpx, 2 * rpx, 2 * rpx);
+  if (elevationMask) ctx.drawImage(elevationMask, c.sx-rpx, c.sy-rpx, 2*rpx, 2*rpx);
+  drawTerrainContours(c,rpx);
 
   if ($("grid").checked) {
     ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.lineWidth = s;
@@ -691,6 +810,12 @@ async function applyAppConfig(config) {
 window.addEventListener("message", (event) => {
   if (!EMBED || event.origin !== window.location.origin) return;
   const data = event.data;
+  if (data?.type === "stamina:terrain-overlay") {
+    terrainOverlayEnabled = data.enabled === true;
+    if (terrainOverlayEnabled) buildTerrainContours();
+    draw();
+  }
+  if (data?.type === "stamina:elevation-filter") applyElevationFilter(data.config);
   if (data?.type === "stamina:temperature-config") applyAppConfig(data.config);
   if (data?.type === "stamina:sites") {
     appSites = data.sites.map((site) => ({
@@ -810,6 +935,14 @@ window.addEventListener("resize", resize);
   if (EMBED) { $("tempOn").checked = false; $("rangeMode").value = "layer"; }
   resize(); resetView();
   await showCurrentLayer();
+  fetch("data/terrain/meta.json").then(response => {
+    if (!response.ok) throw new Error("Terrain tiles not generated");
+    return response.json();
+  }).then(info => {
+    terrainMeta = info;
+    $("source").textContent += ` · Terrain: ${info.source}, ${info.resolutionM} m/px`;
+    draw();
+  }).catch(() => {}); // The original base map remains usable without optional tiles.
   postToApp({ type: "stamina:viewer-ready" });
 })();
 </script>

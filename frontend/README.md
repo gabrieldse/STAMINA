@@ -2,6 +2,13 @@
 
 ## Lunar map data
 
+For detailed terrain when zooming, run `py lola_2d/build_terrain_tiles.py`
+from the repository root after installing the Python requirements. This downloads
+the NASA LOLA 80 m polar DEM and generates a local tile pyramid. The viewer loads
+only visible tiles and keeps the original base map as a fallback. Temperature
+overlays retain their own scientific grid resolution; terrain detail is not
+orbital photography and cannot reveal features smaller than the source data.
+
 The Lunar South Pole map (`public/lunar-map/`) needs its temperature grids,
 which are generated and not committed. From the repository root, once:
 

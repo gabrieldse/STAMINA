@@ -18,40 +18,19 @@ import type {
 } from "../../types/temperature";
 
 import "./AdvancedFilters.css";
+import type { FilterStates } from "../../types/explorer";
+import { buildConfiguration, parseConfiguration } from "../../filters/configuration";
+import type { ImportedConfiguration } from "../../filters/configuration";
 
 type Props = {
+  filters: FilterStates;
+  onImport: (configuration: ImportedConfiguration) => void;
   rules: CustomFilterRule[];
   onChange: (rules: CustomFilterRule[]) => void;
   evaluations: CustomFilterEvaluation[];
   durationDays: number;
   temperature: TemperatureConfig;
 };
-
-// Configuration file: the temperature settings and, when present,
-// the custom rules (same format as the upload).
-function buildConfiguration(
-  temperature: TemperatureConfig,
-  rules: CustomFilterRule[]
-) {
-  return {
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    southPoleTemperatures: {
-      enabled: temperature.enabled,
-      layer: {
-        season: temperature.season,
-        statistic: temperature.statistic,
-      },
-      iceStabilityThresholdK: temperature.iceStabilityThresholdK,
-      selection: {
-        enabled: temperature.selectionEnabled,
-        temperatureK: temperature.temperatureK,
-        amplitudeK: temperature.amplitudeK,
-      },
-    },
-    ...(rules.length > 0 ? { rules } : {}),
-  };
-}
 
 function downloadJson(data: unknown, fileName: string) {
   const blob = new Blob([JSON.stringify(data, null, 2)], {
@@ -62,136 +41,19 @@ function downloadJson(data: unknown, fileName: string) {
 
   link.href = url;
   link.download = fileName;
+  document.body.appendChild(link);
   link.click();
-  URL.revokeObjectURL(url);
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 const metricKeys = Object.keys(
   CUSTOM_METRICS
 ) as CustomMetric[];
 
-function isObject(
-  value: unknown
-): value is Record<string, unknown> {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    !Array.isArray(value)
-  );
-}
-
-// Check uploaded JSON before accepting its rules.
-function parseFilterFile(
-  data: unknown
-): CustomFilterRule[] {
-  if (
-    !isObject(data) ||
-    data.version !== 1 ||
-    !Array.isArray(data.rules)
-  ) {
-    throw new Error(
-      "Invalid file format. Expected version 1 and a rules array."
-    );
-  }
-
-  if (
-    data.rules.length === 0 ||
-    data.rules.length > 30
-  ) {
-    throw new Error(
-      "A filter file must contain 1 to 30 rules."
-    );
-  }
-
-  const parsed = data.rules.map((entry, index) => {
-    if (!isObject(entry)) {
-      throw new Error(`Invalid rule at index ${index}.`);
-    }
-
-    if (
-      typeof entry.id !== "string" ||
-      !/^[a-zA-Z0-9_-]{1,64}$/.test(entry.id)
-    ) {
-      throw new Error(`Invalid rule ID at index ${index}.`);
-    }
-
-    if (
-      typeof entry.metric !== "string" ||
-      !Object.prototype.hasOwnProperty.call(
-        CUSTOM_METRICS,
-        entry.metric
-      )
-    ) {
-      throw new Error(
-        `Unsupported metric in rule ${entry.id}.`
-      );
-    }
-
-    const metric = entry.metric as CustomMetric;
-    const info = CUSTOM_METRICS[metric];
-
-    if (
-      entry.operator !== "gte" &&
-      entry.operator !== "lte"
-    ) {
-      throw new Error(
-        `Invalid operator in rule ${entry.id}.`
-      );
-    }
-
-    const maxValue = info.unit === "%" ? 100 : 8760;
-
-    if (
-      typeof entry.threshold !== "number" ||
-      !Number.isFinite(entry.threshold) ||
-      entry.threshold < 0 ||
-      entry.threshold > maxValue
-    ) {
-      throw new Error(
-        `Invalid threshold in rule ${entry.id}.`
-      );
-    }
-
-    if (
-      entry.enabled !== undefined &&
-      typeof entry.enabled !== "boolean"
-    ) {
-      throw new Error(
-        `Invalid enabled value in rule ${entry.id}.`
-      );
-    }
-
-    const label =
-      typeof entry.label === "string"
-        ? entry.label.trim()
-        : entry.id;
-
-    if (!label || label.length > 100) {
-      throw new Error(
-        `Invalid label in rule ${entry.id}.`
-      );
-    }
-
-    return {
-      id: entry.id,
-      label,
-      metric,
-      operator: entry.operator as CustomOperator,
-      threshold: entry.threshold,
-      enabled: entry.enabled ?? true,
-    };
-  });
-
-  const ids = parsed.map((rule) => rule.id);
-
-  if (new Set(ids).size !== ids.length) {
-    throw new Error("Duplicate rule IDs are not allowed.");
-  }
-
-  return parsed;
-}
-
 export default function AdvancedFilters({
+  filters,
+  onImport,
   rules,
   onChange,
   evaluations,
@@ -264,10 +126,10 @@ export default function AdvancedFilters({
 
       const text = await file.text();
       const parsed: unknown = JSON.parse(text);
-      const importedRules = parseFilterFile(parsed);
+      const configuration = parseConfiguration(parsed);
 
-      // Replace existing custom rules with imported ones.
-      onChange(importedRules);
+      // Apply only after the entire file has passed validation.
+      onImport(configuration);
       setFileName(file.name);
 
     } catch (error) {
@@ -307,7 +169,7 @@ export default function AdvancedFilters({
               className="advanced-add"
               onClick={() =>
                 downloadJson(
-                  buildConfiguration(temperature, rules),
+                  buildConfiguration(temperature, rules, filters),
                   "stamina-configuration.json"
                 )
               }
@@ -316,16 +178,15 @@ export default function AdvancedFilters({
             </button>
 
             <small>
-              South pole temperatures: layer, ice stability
-              threshold, temperature and amplitude intervals.
-              Custom rules are included when present.
+              All built-in filter values and enabled states, temperature
+              settings, and custom rules (including disabled rules).
             </small>
           </div>
 
           {/* FILE UPLOAD */}
           <div className="advanced-upload">
             <label htmlFor="stamina-filter-upload">
-              <strong>Upload Custom Filter File</strong>
+              <strong>Import Filter Configuration</strong>
             </label>
 
             <input
@@ -355,9 +216,8 @@ export default function AdvancedFilters({
             )}
 
             <p className="advanced-disclaimer">
-              Importing a file replaces the current
-              custom rules. The rules will be sent
-              to the engine when you run an analysis.
+              A full configuration restores built-in filters, temperatures,
+              and custom rules. Older rules-only files replace custom rules only.
             </p>
           </div>
 
@@ -414,6 +274,7 @@ export default function AdvancedFilters({
                   <input
                     type="text"
                     value={rule.label}
+                    maxLength={100}
                     onChange={(e) =>
                       updateRule(rule.id, {
                         label: e.target.value,
