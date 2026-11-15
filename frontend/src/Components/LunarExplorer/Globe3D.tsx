@@ -71,6 +71,26 @@ const PRESETS: Record<CameraPreset, { lon: number; lat: number; heightKm: number
   both: { lon: 10, lat: -35, heightKm: 4600 },
 };
 
+type Marker = { entity: Cesium.Entity; position: Cesium.Cartesian3 };
+
+const MOON_RADIUS_SQUARED = Cesium.Ellipsoid.MOON.maximumRadius ** 2;
+
+// Markers draw on top of the relief (depth test off), so the ones beyond the
+// horizon are hidden here: a surface point P faces a camera at C only when C
+// is above P's tangent plane, i.e. P·C > R².
+function hideFarSide(viewer: Cesium.Viewer, markers: Marker[]) {
+  const camera = viewer.camera.positionWC;
+  let changed = false;
+  for (const { entity, position } of markers) {
+    const visible = Cesium.Cartesian3.dot(position, camera) > MOON_RADIUS_SQUARED;
+    if (entity.show !== visible) {
+      entity.show = visible;
+      changed = true;
+    }
+  }
+  if (changed) viewer.scene.requestRender();
+}
+
 function flyTo(viewer: Cesium.Viewer, lon: number, lat: number, heightKm: number) {
   viewer.camera.flyTo({
     destination: Cesium.Cartesian3.fromDegrees(lon, lat, heightKm * 1000),
@@ -90,6 +110,7 @@ export default function Globe3D({
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Cesium.Viewer | null>(null);
+  const markersRef = useRef<Marker[]>([]);
   // The click and render handlers are registered once; they read these refs.
   const onPickRef = useRef(onPick);
   const onPlaceRef = useRef(onPlace);
@@ -196,6 +217,10 @@ export default function Globe3D({
     };
     scene.preRender.addEventListener(spin);
 
+    // The clock ticks every animation frame (also in request-render mode),
+    // so far-side markers hide as soon as the camera moves.
+    viewer.clock.onTick.addEventListener(() => hideFarSide(viewer, markersRef.current));
+
     return () => {
       handler.destroy();
       viewer.destroy();
@@ -220,15 +245,17 @@ export default function Globe3D({
     if (!viewer) return;
 
     viewer.entities.removeAll();
+    const markers: Marker[] = [];
     for (const site of sites) {
       const selected = site.id === selectedId;
       const color = Cesium.Color.fromCssColorString(site.color);
       const properties = { siteId: site.id };
       const polarLabel = site.latitude < -75 && !selected;
 
-      viewer.entities.add({
+      const position = Cesium.Cartesian3.fromDegrees(site.longitude, site.latitude);
+      const marker = viewer.entities.add({
         id: site.id,
-        position: Cesium.Cartesian3.fromDegrees(site.longitude, site.latitude),
+        position,
         properties,
         point: {
           pixelSize: selected ? 13 : 9,
@@ -253,6 +280,7 @@ export default function Globe3D({
             : undefined,
         },
       });
+      markers.push({ entity: marker, position });
 
       if (site.region) {
         const ring = site.region.flatMap(([lat, lon]) => [lon, lat]);
@@ -267,6 +295,8 @@ export default function Globe3D({
         });
       }
     }
+    markersRef.current = markers;
+    hideFarSide(viewer, markers);
     viewer.scene.requestRender();
   }, [sites, selectedId]);
 
