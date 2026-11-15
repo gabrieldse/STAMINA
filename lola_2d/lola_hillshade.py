@@ -24,7 +24,10 @@ import rasterio
 from matplotlib.colors import LightSource
 from rasterio.windows import Window, from_bounds
 
-from render_config import DPI, add_size_args, new_figure
+if __package__:
+    from .render_config import DPI, add_size_args, new_figure
+else:
+    from render_config import DPI, add_size_args, new_figure
 
 # Global LOLA DEM, simple cylindrical (equirectangular), int16 with a 0.5 m scale.
 # Not a COG: 8.5 GB stored in 1-row strips, so remote reads are slow.
