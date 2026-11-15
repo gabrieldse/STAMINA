@@ -23,7 +23,7 @@ export const filterRegistry: FilterDefinition[] = [
   {
     id: "terrain",
     label: "Terrain overlay",
-    description: "Elevation contours every 500 m (LOLA); works over relief and temperature layers",
+    description: "LOLA terrain relief; elevation contours on the default map and shaded relief around any chosen site",
     type: "toggle",
     defaultValue: true,
   },

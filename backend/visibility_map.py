@@ -123,3 +123,35 @@ def visibility_map(size, sun, earth, encoding="array", center=(-90.0, 0.0)):
         else:
             result["visible"] = mask.ravel().tolist()
         return result
+
+
+@lru_cache(maxsize=2)
+def terrain_overlay_map(size, center):
+    """Compact, soft hillshade for the selected circular map footprint."""
+    valid, _, heights = observers(size, center)
+    elevation = np.full((size, size), np.nan, dtype=np.float32)
+    elevation[valid] = heights
+    finite = np.isfinite(elevation)
+    values = np.nan_to_num(elevation, nan=0.0)
+    cell = 2 * MAP_RADIUS / size
+
+    left, right = np.roll(values, 1, axis=1), np.roll(values, -1, axis=1)
+    left_ok, right_ok = np.roll(finite, 1, axis=1), np.roll(finite, -1, axis=1)
+    east = np.where(left_ok & right_ok, (right-left)/(2*cell),
+           np.where(right_ok, (right-values)/cell, np.where(left_ok, (values-left)/cell, 0)))
+    above, below = np.roll(values, 1, axis=0), np.roll(values, -1, axis=0)
+    above_ok, below_ok = np.roll(finite, 1, axis=0), np.roll(finite, -1, axis=0)
+    north = np.where(above_ok & below_ok, (above-below)/(2*cell),
+            np.where(above_ok, (above-values)/cell, np.where(below_ok, (values-below)/cell, 0)))
+
+    norm = np.sqrt(east*east + north*north + 1.0)
+    # A northwest light source makes craters and ridges legible over the WAC image.
+    illumination = np.clip((0.50*east - 0.50*north + 0.7071)/norm, 0.0, 1.0)
+    shade = np.rint((0.38 + 0.62*illumination)*255).astype(np.uint8)
+    shade[~finite] = 0
+    covered = np.zeros((size, size), dtype=np.uint8)
+    covered[valid] = finite[valid]
+    return dict(size=size, radiusM=MAP_RADIUS,
+                coveragePct=round(100*float(finite[valid].mean()), 2),
+                shadePacked=b64encode(shade.tobytes()).decode("ascii"),
+                coveragePacked=b64encode(np.packbits(covered).tobytes()).decode("ascii"))

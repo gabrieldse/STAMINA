@@ -18,7 +18,9 @@ visible NASA Moon Trek tiles. Markers and surface clicks use the same local
 projection; clicks outside the circle cannot add points. Sun and Earth visibility
 use the south-pole LOLA DEM or fetch a cached regional window from NASA's global
 LOLA DEM for other lunar locations. Contours and Diviner temperature layers
-remain specific to the default south-pole map. Custom sites and map center survive
+remain specific to the default south-pole map; custom maps show globally sourced
+shaded LOLA relief when Terrain overlay is enabled. Contour generation is sliced
+into idle browser work to keep map interactions responsive. Custom sites and map center survive
 date changes. **Map area**, at the upper-left inside the map, opens the coordinate
 or default-map choice, with Cancel to keep the current area. **Help** opens the
 original Site Demo / Free Exploration menu, without emoji icons.

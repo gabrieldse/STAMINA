@@ -7,6 +7,7 @@ import type { CircularView, CircularFrame } from "../../utils/circularNavigation
 import "./CircularSiteMap.css";
 
 type Raster = { width: number; height: number; data: Uint8ClampedArray };
+type PixelGrid = { lat:Float32Array;lon:Float32Array;worldX:Float32Array;worldY:Float32Array;n:number;m:number;w:number;h:number;level:number;viewX:number;viewY:number;zoom:number };
 const tileCache = new Map<string, Raster | null>();
 let basePromise: Promise<Raster> | null = null;
 async function raster(url: string, signal?: AbortSignal): Promise<Raster> {
@@ -21,10 +22,11 @@ async function raster(url: string, signal?: AbortSignal): Promise<Raster> {
 type Props = {
   center: MapCenter; sites: GlobeSite[]; selectedId: string | null;
   visibilityMask?: { size: number; radiusM: number; visiblePacked: string; coveragePacked: string } | null;
+  terrainOverlay?: { size: number; radiusM: number; shadePacked: string; coveragePacked: string } | null;
   addMode: boolean; onPick: (id: string)=>void; onPlace:(lat:number,lon:number)=>void;
 };
 
-export default function CircularSiteMap({center,sites,selectedId,visibilityMask,addMode,onPick,onPlace}:Props) {
+export default function CircularSiteMap({center,sites,selectedId,visibilityMask,terrainOverlay,addMode,onPick,onPlace}:Props) {
   const canvasRef=useRef<HTMLCanvasElement>(null);
   const [view,setView]=useState<CircularView>(INITIAL_CIRCULAR_VIEW);
   const viewRef=useRef(view);
@@ -33,6 +35,18 @@ export default function CircularSiteMap({center,sites,selectedId,visibilityMask,
   const wheelTimer=useRef<number|null>(null);
   const [status,setStatus]=useState("Loading circular lunar map...");
   const projection=useMemo(()=>circularProjection(center),[center.latitude,center.longitude]);
+  const decodedVisibility=useMemo(()=>visibilityMask?{
+    visible:Uint8Array.from(atob(visibilityMask.visiblePacked),char=>char.charCodeAt(0)),
+    covered:Uint8Array.from(atob(visibilityMask.coveragePacked),char=>char.charCodeAt(0)),
+  }:null,[visibilityMask]);
+  const decodedTerrain=useMemo(()=>terrainOverlay?{
+    shade:Uint8Array.from(atob(terrainOverlay.shadePacked),char=>char.charCodeAt(0)),
+    covered:Uint8Array.from(atob(terrainOverlay.coveragePacked),char=>char.charCodeAt(0)),
+  }:null,[terrainOverlay]);
+  const renderState=useRef({view,sites,selectedId,decodedVisibility,decodedTerrain,visibilityMask,terrainOverlay});
+  renderState.current={view,sites,selectedId,decodedVisibility,decodedTerrain,visibilityMask,terrainOverlay};
+  const gridRef=useRef<PixelGrid|null>(null);
+  const queueRef=useRef<()=>void>(()=>{});
   const geometry=useRef<CircularFrame>({width:1,height:1,radius:1});
   function captureGesture() {
     const canvas=canvasRef.current!,image=document.createElement("canvas");
@@ -71,11 +85,11 @@ export default function CircularSiteMap({center,sites,selectedId,visibilityMask,
     const controller=new AbortController();let stopped=false,raf=0;
     let draw:()=>void=()=>{};
     const queue=()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>draw());};
+    queueRef.current=queue;
     const observer=new ResizeObserver(queue);observer.observe(canvas);
     if (!basePromise) basePromise=raster("/globe/lroc_wac_global.jpg").catch(error=>{basePromise=null;throw error;});
     void basePromise.then(async base=>{
       if(stopped)return;
-      let grid: {lat:Float32Array;lon:Float32Array;worldX:Float32Array;worldY:Float32Array;n:number;m:number;w:number;h:number;level:number}|null=null;
       const requested=new Set<string>();
       const loadTiles=async(keys:string[])=>{
         let cursor=0;
@@ -93,28 +107,32 @@ export default function CircularSiteMap({center,sites,selectedId,visibilityMask,
       };
       draw=()=>{
         if(stopped||gesture.current)return;
+        const current=renderState.current,currentView=current.view;
         const w=canvas.clientWidth,h=canvas.clientHeight,baseRadius=Math.max(1,Math.min(w,h)/2-24);
-        const scale=baseRadius/CIRCULAR_RADIUS_M*view.zoom,r=baseRadius*view.zoom;
-        const cx=w/2-view.x*scale,cy=h/2+view.y*scale;
+        const scale=baseRadius/CIRCULAR_RADIUS_M*currentView.zoom,r=baseRadius*currentView.zoom;
+        const cx=w/2-currentView.x*scale,cy=h/2+currentView.y*scale;
         const n=Math.min(1024,Math.ceil(w*devicePixelRatio)),m=Math.min(1024,Math.ceil(h*devicePixelRatio));
         geometry.current={width:w,height:h,radius:baseRadius};canvas.width=Math.ceil(w*devicePixelRatio);canvas.height=Math.ceil(h*devicePixelRatio);
         const ctx=canvas.getContext("2d")!;ctx.scale(devicePixelRatio,devicePixelRatio);ctx.fillStyle="#08090b";ctx.fillRect(0,0,w,h);
-        if(!grid||grid.n!==n||grid.w!==w||grid.h!==h){
+        let grid=gridRef.current;
+        if(!grid||grid.n!==n||grid.w!==w||grid.h!==h||grid.viewX!==currentView.x||grid.viewY!==currentView.y||grid.zoom!==currentView.zoom){
           const lat=new Float32Array(n*m),lon=new Float32Array(n*m),worldX=new Float32Array(n*m),worldY=new Float32Array(n*m);lat.fill(NaN);
           const keys=new Map<string,number>();
           const level=Math.max(2,Math.min(8,Math.ceil(Math.log2(2*Math.PI*1737400/(w/n/scale)/512))));
           for(let row=0;row<m;row++)for(let col=0;col<n;col++){
-            const {x,y}=circularWorld(view,geometry.current,(col+.5)/n*w,(row+.5)/m*h);if(x*x+y*y>CIRCULAR_RADIUS_M**2)continue;
+            const {x,y}=circularWorld(currentView,geometry.current,(col+.5)/n*w,(row+.5)/m*h);if(x*x+y*y>CIRCULAR_RADIUS_M**2)continue;
             const p=projection.inverse(x,y),i=row*n+col;lat[i]=p.latitude;lon[i]=p.longitude;worldX[i]=x;worldY[i]=y;
             if(row%8===0&&col%8===0){const tx=Math.floor(((p.longitude+180)/360)*(2**(level+1)))%(2**(level+1)),ty=Math.min(2**level-1,Math.floor((90-p.latitude)/180*2**level));const key=`${level}/${ty}/${tx}`;keys.set(key,Math.min(keys.get(key)??Infinity,x*x+y*y));}
           }
-          grid={lat,lon,worldX,worldY,n,m,w,h,level};
+          grid={lat,lon,worldX,worldY,n,m,w,h,level,viewX:currentView.x,viewY:currentView.y,zoom:currentView.zoom};
+          gridRef.current=grid;
           const pending=[...keys].sort((a,b)=>a[1]-b[1]).map(([key])=>key).filter(key=>!tileCache.has(key)&&!requested.has(key)).slice(0,128);
           pending.forEach(key=>requested.add(key));void loadTiles(pending);
         }
+        if(!grid)return;
         const image=ctx.createImageData(n,m),{lat,lon,worldX,worldY,level}=grid;
-        const visible=visibilityMask?Uint8Array.from(atob(visibilityMask.visiblePacked),char=>char.charCodeAt(0)):null;
-        const covered=visibilityMask?Uint8Array.from(atob(visibilityMask.coveragePacked),char=>char.charCodeAt(0)):null;
+        const visible=current.decodedVisibility?.visible??null,covered=current.decodedVisibility?.covered??null;
+        const shade=current.decodedTerrain?.shade??null,terrainCovered=current.decodedTerrain?.covered??null;
         for(let i=0;i<lat.length;i++){
           if(!Number.isFinite(lat[i]))continue;
           const u=((lon[i]+180)/360+1)%1,v=Math.max(0,Math.min(1-1e-10,(90-lat[i])/180));
@@ -123,11 +141,26 @@ export default function CircularSiteMap({center,sites,selectedId,visibilityMask,
           const source=tile||base;
           const px=Math.floor((tile?tx%1:u)*source.width),py=Math.floor((tile?ty%1:v)*source.height),j=(py*source.width+px)*4;
           const out=i*4;image.data.set(source.data.subarray(j,j+4),out);
-          if(visible&&covered&&visibilityMask){
-            const col=Math.floor((worldX[i]+visibilityMask.radiusM)/(2*visibilityMask.radiusM)*visibilityMask.size);
-            const row=Math.floor((visibilityMask.radiusM-worldY[i])/(2*visibilityMask.radiusM)*visibilityMask.size);
-            if(col>=0&&row>=0&&col<visibilityMask.size&&row<visibilityMask.size){
-              const index=row*visibilityMask.size+col,bit=1<<(7-index%8),byte=index>>3;
+          const currentTerrain=current.terrainOverlay;
+          if(shade&&terrainCovered&&currentTerrain){
+            const col=Math.floor((worldX[i]+currentTerrain.radiusM)/(2*currentTerrain.radiusM)*currentTerrain.size);
+            const row=Math.floor((currentTerrain.radiusM-worldY[i])/(2*currentTerrain.radiusM)*currentTerrain.size);
+            if(col>=0&&row>=0&&col<currentTerrain.size&&row<currentTerrain.size){
+              const terrainIndex=row*currentTerrain.size+col;
+              if(terrainCovered[terrainIndex>>3]&(1<<(7-terrainIndex%8))){
+                const factor=.62+.45*shade[terrainIndex]/255;
+                image.data[out]=Math.min(255,image.data[out]*factor);
+                image.data[out+1]=Math.min(255,image.data[out+1]*factor);
+                image.data[out+2]=Math.min(255,image.data[out+2]*factor);
+              }
+            }
+          }
+          const currentMask=current.visibilityMask;
+          if(visible&&covered&&currentMask){
+            const col=Math.floor((worldX[i]+currentMask.radiusM)/(2*currentMask.radiusM)*currentMask.size);
+            const row=Math.floor((currentMask.radiusM-worldY[i])/(2*currentMask.radiusM)*currentMask.size);
+            if(col>=0&&row>=0&&col<currentMask.size&&row<currentMask.size){
+              const index=row*currentMask.size+col,bit=1<<(7-index%8),byte=index>>3;
               if(covered[byte]&bit && !(visible[byte]&bit)){image.data[out]=8;image.data[out+1]=9;image.data[out+2]=11;}
             }
           }
@@ -135,10 +168,10 @@ export default function CircularSiteMap({center,sites,selectedId,visibilityMask,
         const layer=document.createElement("canvas");layer.width=n;layer.height=m;layer.getContext("2d")!.putImageData(image,0,0);
         ctx.drawImage(layer,0,0,w,h);
         ctx.save();ctx.beginPath();ctx.arc(cx,cy,r,0,2*Math.PI);ctx.clip();
-        for(const site of sites){
+        for(const site of current.sites){
           const p=projection.forward(site.latitude,site.longitude);if(Math.hypot(p.x,p.y)>CIRCULAR_RADIUS_M)continue;
           const x=cx+p.x*scale,y=cy-p.y*scale;
-          ctx.beginPath();ctx.arc(x,y,site.id===selectedId?6:4,0,2*Math.PI);ctx.fillStyle=site.color;ctx.fill();
+          ctx.beginPath();ctx.arc(x,y,site.id===current.selectedId?6:4,0,2*Math.PI);ctx.fillStyle=site.color;ctx.fill();
           ctx.strokeStyle="#000";ctx.lineWidth=2;ctx.stroke();ctx.fillStyle="#fff";ctx.font="12px system-ui";ctx.fillText(site.label,x+9,y-6);
         }
         ctx.strokeStyle="#71d4e7";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(cx-10,cy);ctx.lineTo(cx+10,cy);ctx.moveTo(cx,cy-10);ctx.lineTo(cx,cy+10);ctx.stroke();ctx.restore();
@@ -146,8 +179,9 @@ export default function CircularSiteMap({center,sites,selectedId,visibilityMask,
       };
       queue();setStatus("LROC WAC imagery · NASA/GSFC/ASU · circular stereographic map");
     }).catch(()=>{if(!stopped)setStatus("Lunar imagery unavailable. Check your connection and try again.");});
-    return()=>{stopped=true;controller.abort();observer.disconnect();cancelAnimationFrame(raf);};
-  },[projection,view,sites,selectedId,visibilityMask]);
+    return()=>{stopped=true;controller.abort();observer.disconnect();cancelAnimationFrame(raf);queueRef.current=()=>{};};
+  },[projection]);
+  useEffect(()=>{queueRef.current();},[view,sites,selectedId,decodedVisibility,decodedTerrain]);
   function selectAt(event:React.PointerEvent<HTMLCanvasElement>) {
     const box=event.currentTarget.getBoundingClientRect();
     const {x,y}=circularWorld(viewRef.current,geometry.current,event.clientX-box.left,event.clientY-box.top);
