@@ -4,8 +4,10 @@
 
 For detailed terrain when zooming, run `py lola_2d/build_terrain_tiles.py`
 from the repository root after installing the Python requirements. This downloads
-the NASA LOLA 80 m polar DEM and generates a local tile pyramid. The viewer loads
-only visible tiles and keeps the original base map as a fallback. Temperature
+the NASA LOLA 80 m polar DEM and generates local tile pyramids of shaded relief and
+of contour lines (500 m, bold every 1,000 m) for the "Terrain overlay" filter. The
+viewer loads only visible tiles; without them it keeps the original base map and
+computes coarser contours in the browser. Temperature
 overlays retain their own scientific grid resolution; terrain detail is not
 orbital photography and cannot reveal features smaller than the source data.
 
