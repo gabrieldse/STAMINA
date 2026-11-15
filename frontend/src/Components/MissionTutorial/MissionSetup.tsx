@@ -8,7 +8,7 @@ type Props = {
 
 export default function MissionSetup({ onContinue }: Props) {
   const [name, setName] = useState("Operation Polar Light");
-  const [date, setDate] = useState("2032-11-01");
+  const [date, setDate] = useState("2027-01-01");
   const [duration, setDuration] = useState(14);
   const [sunlight, setSunlight] = useState(65);
   const [earth, setEarth] = useState(50);

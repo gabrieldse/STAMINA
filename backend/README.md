@@ -12,7 +12,7 @@ visibility at midnight and omits outage durations. Elevation filters apply to
 the Sun and Earth respectively. Terrain overlay is a display control: these
 calculations do not model topographic shadows or radio propagation.
 
-The map time explorer uses `/api/position-timeline?date=2032-11-01&durationDays=14`.
+The map time explorer uses `/api/position-timeline?date=2027-01-01&durationDays=14`.
 It preloads hourly Sun and Earth vectors (including the end of the window), then
 updates the map mask and landing-site elevation windows locally during playback.
 Green site windows meet every enabled elevation threshold; other environmental

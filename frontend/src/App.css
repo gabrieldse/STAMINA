@@ -353,7 +353,8 @@
 
 .stamina-app-header {
   flex-shrink: 0;
-  min-height: 64px;
+  /* 10% lower than the original 64 px bar */
+  min-height: 58px;
   padding: 0 24px;
   display: flex;
   align-items: center;
@@ -373,12 +374,12 @@
 
 .stamina-app-logo {
   display: block;
-  height: 22px;
+  height: 20px;
   width: auto;
 }
 
 .stamina-app-logo-partner {
-  height: 22px;
+  height: 20px;
 }
 
 .stamina-app-logo-separator {
@@ -516,7 +517,7 @@
 /* SHORT SCREENS: thinner header, no status bar, so the workspace fits */
 @media (max-height: 820px) {
   .stamina-app-header {
-    min-height: 48px;
+    min-height: 43px;
   }
 
   .stamina-statusbar {

@@ -79,7 +79,7 @@ export default function LunarExplorer() {
     useState<TemperatureSelectionStats | null>(null);
 
   // Analysis parameters
-  const [date, setDate] = useState("2032-11-01");
+  const [date, setDate] = useState("2027-01-01");
   const [durationDays, setDurationDays] = useState(14);
 
   // Scientific results
