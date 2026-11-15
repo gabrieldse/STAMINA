@@ -27,6 +27,8 @@ type Props = {
   // "+ Add point": the next click on the map places a custom point.
   addMode: boolean;
   onToggleAddMode: () => void;
+  // Adds a custom point at typed coordinates; returns an error message or null.
+  onAddCoordinates: (latitude: number, longitude: number, name: string) => string | null;
   // Eye button: move the view to the site.
   onGoTo: (id: string) => void;
   // 3D globe controls
@@ -58,6 +60,7 @@ export default function SiteList({
   onExportGroup,
   addMode,
   onToggleAddMode,
+  onAddCoordinates,
   onGoTo,
   view,
   rotating,
@@ -71,6 +74,24 @@ export default function SiteList({
   );
   // Site being renamed and the text typed so far
   const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
+  // "Add by coordinates" form
+  const [coordsOpen, setCoordsOpen] = useState(false);
+  const [coords, setCoords] = useState({ lat: "", lon: "", name: "" });
+  const [coordsError, setCoordsError] = useState("");
+
+  function submitCoordinates() {
+    const latitude = Number(coords.lat), longitude = Number(coords.lon);
+    if (coords.lat.trim() === "" || coords.lon.trim() === "") {
+      setCoordsError("Enter both latitude and longitude.");
+      return;
+    }
+    const error = onAddCoordinates(latitude, longitude, coords.name.trim());
+    setCoordsError(error ?? "");
+    if (!error) {
+      setCoords({ lat: "", lon: "", name: "" });
+      setCoordsOpen(false);
+    }
+  }
 
   function toggleFold(key: string) {
     const next = new Set(openGroups);
@@ -114,6 +135,71 @@ export default function SiteList({
             <small className="site-add-hint">
               Click the map to place the point (Esc cancels)
             </small>
+          )}
+
+          <button
+            type="button"
+            className={"site-add site-add-coords" + (coordsOpen ? " active" : "")}
+            onClick={() => {
+              setCoordsOpen(!coordsOpen);
+              setCoordsError("");
+            }}
+            aria-expanded={coordsOpen}
+          >
+            ⌖ Add by coordinates
+          </button>
+
+          {coordsOpen && (
+            <form
+              className="site-coords"
+              // Our own messages, the same in every browser
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault();
+                submitCoordinates();
+              }}
+            >
+              <div className="site-coords-row">
+                <label>
+                  Lat °
+                  <input
+                    type="number"
+                    step="any"
+                    min={-90}
+                    max={90}
+                    placeholder="-86.8"
+                    value={coords.lat}
+                    onChange={(e) => setCoords({ ...coords, lat: e.target.value })}
+                    autoFocus
+                  />
+                </label>
+                <label>
+                  Lon °
+                  <input
+                    type="number"
+                    step="any"
+                    min={-180}
+                    max={360}
+                    placeholder="-22.8"
+                    value={coords.lon}
+                    onChange={(e) => setCoords({ ...coords, lon: e.target.value })}
+                  />
+                </label>
+              </div>
+              <input
+                type="text"
+                maxLength={60}
+                placeholder="Name (optional)"
+                aria-label="Point name (optional)"
+                value={coords.name}
+                onChange={(e) => setCoords({ ...coords, name: e.target.value })}
+              />
+              <small className="site-coords-hint">
+                Degrees, north and east positive. South of 80°S shows on the 2D map.
+              </small>
+              {coordsError && <small className="site-coords-error" role="alert">{coordsError}</small>}
+              <button type="submit" className="site-coords-submit">Add point</button>
+            </form>
           )}
 
           {view === "3d" && (

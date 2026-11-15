@@ -127,7 +127,8 @@ export default function MapPanel({
 }: Props) {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [viewerReady, setViewerReady] = useState(false);
-  const terrainEnabled = Boolean(filters.terrain?.enabled && filters.terrain.value);
+  // The terrain overlay (contour lines) shows whenever its filter is enabled.
+  const terrainEnabled = Boolean(filters.terrain?.enabled);
   useEffect(() => {
     if (viewerReady) postToViewer({ type: "stamina:terrain-overlay", enabled: terrainEnabled });
   }, [viewerReady, terrainEnabled]);
@@ -179,6 +180,19 @@ export default function MapPanel({
     setAddMode(false);
     onSiteSelect(point);
   }
+  // "Add by coordinates": validates, normalises the longitude and adds the point.
+  function addPointAt(latitude: number, longitude: number, name: string): string | null {
+    if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
+      return "Latitude must be between -90 and 90.";
+    }
+    if (!Number.isFinite(longitude) || longitude < -180 || longitude > 360) {
+      return "Longitude must be between -180 and 360.";
+    }
+    const lon = longitude > 180 ? longitude - 360 : longitude;
+    addPoint(latitude, lon, name ? { name } : {});
+    return null;
+  }
+
   // The message listener below is registered once; it reaches addPoint through a ref.
   const addPointRef = useRef(addPoint);
   useEffect(() => {
@@ -284,7 +298,7 @@ export default function MapPanel({
   }, [viewerReady, focusId]);
 
   // Comparison: the switched-on sites inside the polar map, at most COMPARE_LIMIT shown.
-  const [cropKm, setCropKm] = useState(20);
+  const [cropKm, setCropKm] = useState(80);
   const [menuOpen, setMenuOpen] = useState(true);
   const compareSites = useMemo<CompareSite[]>(
     () => mapSites
@@ -546,6 +560,7 @@ export default function MapPanel({
           onExportGroup={exportGroup}
           addMode={addMode}
           onToggleAddMode={() => setAddMode(!addMode)}
+          onAddCoordinates={addPointAt}
           onGoTo={goTo}
           view={activeView}
           rotating={rotating}

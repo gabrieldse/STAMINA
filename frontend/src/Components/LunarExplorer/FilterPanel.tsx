@@ -75,6 +75,8 @@ export default function FilterPanel({
                 onChange={(e) =>
                   updateFilter(filter.id, {
                     enabled: e.target.checked,
+                    // A toggle filter (terrain overlay) is on exactly when it is enabled.
+                    ...(filter.type === "toggle" ? { value: e.target.checked } : {}),
                   })
                 }
               />
@@ -106,20 +108,6 @@ export default function FilterPanel({
               </div>
             )}
 
-            {state.enabled && filter.type === "toggle" && (
-              <label className="filter-toggle">
-                <input
-                  type="checkbox"
-                  checked={Boolean(state.value)}
-                  onChange={(e) =>
-                    updateFilter(filter.id, {
-                      value: e.target.checked,
-                    })
-                  }
-                />
-                Show overlay
-              </label>
-            )}
 
             {state.enabled && filter.type === "select" && (
               <select

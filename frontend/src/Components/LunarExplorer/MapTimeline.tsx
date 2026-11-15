@@ -8,7 +8,7 @@ type PositionSeries = { times: string[]; sun: number[][]; earth: number[][] };
 type Props = Omit<ComponentProps<typeof MapPanel>, "positions" | "positionStatus"> & { durationDays: number };
 const utc = (value: string) => value.replace("T", " ").replace(":00Z", " UTC");
 
-export function elevation(vector: number[], latitude: number, longitude: number) {
+function elevation(vector: number[], latitude: number, longitude: number) {
   const lat = latitude * Math.PI / 180, lon = longitude * Math.PI / 180;
   const up = [Math.cos(lat) * Math.cos(lon), Math.cos(lat) * Math.sin(lon), Math.sin(lat)];
   const relative = vector.map((v, i) => v - 1737.4 * up[i]);

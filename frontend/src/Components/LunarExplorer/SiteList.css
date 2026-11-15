@@ -322,3 +322,67 @@ div.site-list-item {
   background: #4b6fa5;
   color: #fff;
 }
+
+/* "Add by coordinates" form, under "+ Add point" */
+.site-add-coords {
+  font-weight: 500;
+}
+
+.site-coords {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 4px;
+  padding: 6px;
+  border-radius: 10px;
+  background: #232326;
+}
+
+.site-coords-row {
+  display: flex;
+  gap: 4px;
+}
+
+.site-coords label {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  color: #a8a8a8;
+  font-size: 10px;
+}
+
+.site-coords input {
+  width: 100%;
+  min-width: 0;
+  padding: 3px 5px;
+  border: 1px solid #555;
+  border-radius: 5px;
+  background: #111;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+}
+
+.site-coords-hint {
+  color: #a8a8a8;
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.site-coords-error {
+  color: #ff8a80;
+  font-size: 10px;
+}
+
+.site-coords-submit {
+  padding: 4px;
+  border: 0;
+  border-radius: 6px;
+  background: #ff9f43;
+  color: #1e1e1e;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}

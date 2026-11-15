@@ -85,13 +85,6 @@
   font-weight: bold;
 }
 
-.filter-toggle {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-top: 12px;
-}
-
 .filter-item select {
   width: 100%;
   padding: 10px;
@@ -930,4 +923,25 @@
   padding: 6px 20px;
   color: #b6b6b6;
   font-size: 12px;
+}
+
+/* Left panel: the generic intro repeats the heading; keep the elevation-filter note */
+.explorer-left-panel .explorer-filters > p:first-of-type {
+  display: none;
+}
+
+.explorer-left-panel .filter-item select {
+  padding: 5px 8px;
+  margin-top: 4px;
+}
+
+.explorer-left-panel .filter-item {
+  padding: 6px 0;
+}
+
+/* Very short screens: the [todo] placeholders are the first thing to go */
+@media (max-height: 660px) {
+  .explorer-left-panel .temperature-todo {
+    display: none;
+  }
 }
