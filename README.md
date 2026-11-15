@@ -8,6 +8,11 @@ distance measurements, and mission timelines.
 **The website needs both the frontend and the API.** Opening an HTML file or
 running Vite alone does not enable the scientific calculations.
 
+The complete project lives on [`main`](https://github.com/gabrieldse/STAMINA).
+The repository is public: anyone with the link can read or clone it without
+an invitation. See [the illumination tools](Filters/README.md) for the standalone
+terrain and hourly illumination image generator included alongside the website.
+
 ## Requirements
 
 - Python 3.12 or newer. Development has also been checked with Python 3.14.
@@ -19,7 +24,7 @@ running Vite alone does not enable the scientific calculations.
 ## 1. Get the project and install dependencies
 
 ```bash
-git clone --branch site-stamina-anas https://github.com/gabrieldse/STAMINA.git
+git clone https://github.com/gabrieldse/STAMINA.git
 cd STAMINA
 python -m venv .venv
 ```
@@ -147,7 +152,8 @@ Cloudflare sharing process is a local development tool, not permanent hosting.
 | `scripts/manage.py` | Setup checks, data generation, development and build commands |
 | `lola_2d/` | NASA dataset downloads and map/terrain asset generators |
 | `SMEData/` | SPICE kernel loading and bundled ephemeris kernels |
-| `Sunlight/`, `Filters.py`, `moon_surface_getter.py` | Earlier scientific utilities, still covered by Python tests |
+| `Filters/` | Standalone illumination tools, regional DEM preparation, and their tests |
+| `SurfaceData/` | Shared DEM reading helpers |
 | `tests/` | Python scientific and API tests |
 | `docs/` | Architecture and contributor notes |
 | `legacy/website/` | Original static prototype; not the active application |
@@ -161,6 +167,7 @@ See [architecture](docs/architecture.md), [frontend notes](frontend/README.md),
 ```bash
 python -m pip install -r requirements-dev.txt
 python -m unittest discover -s tests
+python -m unittest discover -s Filters/tests
 npm --prefix frontend test
 npm --prefix frontend run build
 ```

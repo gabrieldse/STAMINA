@@ -12,3 +12,5 @@ backend/*.log
 .ruff_cache/
 .coverage
 htmlcov/
+results_over_time/
+results/

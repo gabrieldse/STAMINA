@@ -42,7 +42,8 @@ def require_data():
 
 
 def doctor():
-    missing_modules = [name for name in ("fastapi", "uvicorn", "numpy", "rasterio", "spiceypy", "matplotlib", "PIL")
+    missing_modules = [name for name in ("fastapi", "uvicorn", "numpy", "rasterio", "spiceypy", "matplotlib", "PIL",
+                                        "numba", "rioxarray", "scipy", "solshade", "pyproj", "xarray")
                        if importlib.util.find_spec(name) is None]
     print(f"Python: {sys.version.split()[0]} ({sys.executable})")
     print(f"Node.js: {shutil.which('node') or 'MISSING'}")

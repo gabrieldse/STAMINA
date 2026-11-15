@@ -1,18 +1,19 @@
+"""Pixel-by-pixel reference ray tracer for simple-cylindrical lunar DEMs."""
 from pathlib import Path
 import sys
 
-MOON_RADIUS_KM = 1737.4
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT)) 
-sys.path.insert(0, str(ROOT/"SMEData"))
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import kernel_loaders as kl
+from SMEData import kernel_loaders as kl
+from SMEData import SME_data_getter as sme
+from SurfaceData.moon_surface_getter import open_dem
 import numpy as np
 import rasterio
 import spiceypy as sp
-import SME_data_getter as sme
-from moon_surface_getter import open_dem
 from numba import njit
+
+MOON_RADIUS_KM = 1737.4
 
 # Map coordinates use meters; this is the reference-sphere arc length per degree.
 meters_per_degree = MOON_RADIUS_KM * 1000 * np.pi / 180

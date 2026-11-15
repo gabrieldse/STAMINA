@@ -21,6 +21,10 @@ corrected elevation to a maximum skyline in 720 azimuth sectors (0.5 degrees).
 Profiles are cached in memory. This sector maximum is conservative and can
 merge narrow obstacles. No flat-horizon fallback is used if data is absent.
 
+SPICE kernels remain loaded so the API and illumination tools can reuse them.
+API requests serialize SPICE access with a lock; other callers must coordinate
+concurrent SPICE access as well.
+
 NASA SPICE DE440s / IAU_MOON body-center directions are compared with the
 skyline in the matching sector. This is an approximation inspired by the paper,
 not its complete illumination model: finite solar/Earth disks, scattered light,
@@ -70,9 +74,12 @@ masks, preserve missing-data exclusions, and check bitset ordering.
 API tests: `py -m pip install httpx`, then
 `py -m unittest discover -s tests -p test_api.py`.
 
-For the full suite, including the legacy illumination module:
+For both scientific test suites, run from the repository root:
 
-```powershell
-$env:PYTHONPATH = Join-Path (Get-Location) 'lola_2d'
-.venv/Scripts/python.exe -B -m unittest discover -s tests
+```bash
+python -m unittest discover -s tests
+python -m unittest discover -s Filters/tests
 ```
+
+The standalone illumination image generator is documented in
+[Filters/README.md](../Filters/README.md).

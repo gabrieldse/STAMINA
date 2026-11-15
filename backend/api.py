@@ -83,8 +83,6 @@ def position_timeline(date: date, durationDays: int = Query(default=14, ge=1, le
             return dict(times=stamps, **vectors)
         except sp.utils.exceptions.SpiceyError as exc:
             raise HTTPException(503, "Ephemeris unavailable for this mission.") from exc
-        finally:
-            sp.kclear()
 
 
 @app.get("/api/positions")
@@ -101,8 +99,6 @@ def positions(date: date):
             return dict(**vectors, utc=date.isoformat() + "T00:00:00Z")
         except sp.utils.exceptions.SpiceyError as exc:
             raise HTTPException(503, "Ephemeris unavailable for this date.") from exc
-        finally:
-            sp.kclear()
 
 
 class Site(BaseModel):
@@ -165,8 +161,6 @@ def analyze(request: AnalysisRequest):
             raise HTTPException(503, str(exc)) from exc
         except sp.utils.exceptions.SpiceyError as exc:
             raise HTTPException(503, "SPICE data could not be loaded or does not cover this mission.") from exc
-        finally:
-            sp.kclear()
     sun, earth = visibility
     metrics = dict(sunlightPercent=round(float(sun.mean()*100), 2),
                    earthVisibilityPercent=round(float(earth.mean()*100), 2))

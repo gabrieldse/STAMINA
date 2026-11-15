@@ -10,8 +10,13 @@ KERNELS = [
 ]
 
 def load_kernels():
+    """Load missing project kernels without duplicating existing pool entries."""
+    loaded = {Path(sp.kdata(index, "ALL")[0]).resolve()
+              for index in range(sp.ktotal("ALL"))}
     for kernel in KERNELS:
-        sp.furnsh(str(ROOT / "Kernels" / kernel))
+        path = (ROOT / "Kernels" / kernel).resolve()
+        if path not in loaded:
+            sp.furnsh(str(path))
 
 def clear_kernels():
     sp.kclear()

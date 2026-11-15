@@ -5,8 +5,6 @@ ROOT = Path(__file__).resolve().parent
 #kernels found on: https://naif.jpl.nasa.gov/pub/naif/generic_kernels/
 
 import spiceypy as sp
-import time_getter as tg
-import kernel_loaders as kl
 import numpy as np
 
 MOON_RADIUS = 1737400  # in meters
@@ -25,6 +23,9 @@ MOON_FRAME = 'IAU_MOON' #use this frame to calculate positions relative to the M
 
 '''
 #example of getting the position of the Sun relative to the Moon at a specific time
+
+from SMEData import kernel_loaders as kl
+from SMEData import time_getter as tg
 
 kl.load_kernels() # Load the necessary SPICE kernels for planetary and lunar data
 

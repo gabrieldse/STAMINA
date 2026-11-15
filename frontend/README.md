@@ -11,6 +11,7 @@ Run inside `frontend/`:
 ```bash
 npm ci
 npm run dev     # http://localhost:5173; scientific API must run on port 8001
+npm run dev:all # Start frontend and API with the shared Python launcher
 npm test        # Node geometry, configuration, and visibility tests
 npm run build  # TypeScript check and production build in dist/
 ```

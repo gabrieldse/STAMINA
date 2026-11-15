@@ -1,6 +1,7 @@
 import unittest
 from fastapi.testclient import TestClient
 from backend.api import app, longest_outage
+from SMEData.kernel_loaders import load_kernels
 
 
 class AnalysisTests(unittest.TestCase):
@@ -8,6 +9,21 @@ class AnalysisTests(unittest.TestCase):
         self.client = TestClient(app)
         self.payload = dict(site=dict(id="test", latitude=-89, longitude=0),
                             date="2026-11-14", durationDays=2, filters={})
+
+    def test_api_preserves_illumination_kernels_without_duplicate_loads(self):
+        import spiceypy as sp
+        from Filters.Sunlight import illumination_funcs
+
+        load_kernels()
+        count = sp.ktotal("ALL")
+        for path in ("/api/positions?date=2026-11-14",
+                     "/api/position-timeline?date=2026-11-14&durationDays=1"):
+            self.assertEqual(self.client.get(path).status_code, 200)
+        self.assertEqual(self.client.post("/api/analyze", json=self.payload).status_code, 200)
+        self.assertEqual(sp.ktotal("ALL"), count)
+        et = sp.str2et("2026-11-18T12:00:00")
+        sun, _ = illumination_funcs.sme.get_sun_vec(et)
+        self.assertEqual(len(sun), 3)
 
     def test_real_ephemeris_and_custom_rules(self):
         self.payload["customFilters"] = [dict(id="sun", label="Sun", metric="sunlightPercent", operator="gte", threshold=100)]

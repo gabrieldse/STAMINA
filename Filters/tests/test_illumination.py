@@ -1,4 +1,5 @@
 import sys
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -6,15 +7,18 @@ from unittest.mock import patch
 
 import numpy as np
 import rasterio
+import matplotlib.image as mpimg
 from rasterio.io import MemoryFile
 from rasterio.transform import from_origin
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "Sunlight"))
+ROOT = Path(__file__).resolve().parent.parent.parent
+# Allow direct execution as well as discovery from the repository root.
+sys.path.insert(0, str(ROOT))
 
-import illumination as illumination
-import Filters
-import moon_surface_getter
+import Filters.Sunlight.illumination as illumination_funcs
+import Filters.Sunlight.overlay as overlay
+import Filters.filters as generic_filter
+import SurfaceData.moon_surface_getter as moon_surface_getter
 
 
 class VisibilityTests(unittest.TestCase):
@@ -30,8 +34,8 @@ class VisibilityTests(unittest.TestCase):
             ),
         )
         self.heights = np.zeros((7, 7), dtype="float32")
-        site, _ = illumination.sme.get_site_vec(0, 0, 0, 0)
-        east, _, up = illumination.directions(0, 0)
+        site, _ = illumination_funcs.sme.get_site_vec(0, 0, 0, 0)
+        east, _, up = illumination_funcs.directions(0, 0)
         direction = np.cos(np.radians(5)) * east + np.sin(np.radians(5)) * up
         self.sun = site + 1e8 * direction
 
@@ -46,7 +50,61 @@ class VisibilityTests(unittest.TestCase):
 
     def visibility(self, **kwargs):
         self.dem.write(self.heights, 1)
-        return illumination.check_visibility(0, 0, 0, self.sun, dem=self.dem, **kwargs)
+        return illumination_funcs.check_visibility(0, 0, 0, self.sun, dem=self.dem, **kwargs)
+
+    def test_filter_uses_same_illumination_module(self):
+        self.assertIs(generic_filter.illum, illumination_funcs)
+
+    def test_overlay_maps_results_to_dem_pixels(self):
+        self.save_dem()
+        output = Path(self.tempdir.name) / "overlay.png"
+        k = illumination_funcs.meters_per_degree
+        positions = [self.dem.xy(1, 5), self.dem.xy(2, 1), self.dem.xy(5, 2)]
+        results = [(x / k, y / k, value) for (x, y), value in
+                   zip(positions, (True, False, None))]
+        bounds = (-250 / k, -250 / k, 250 / k, 250 / k)
+        with patch.object(overlay, "run_illumination_filter", return_value=iter(results)) as run:
+            returned = overlay.save_illumination_overlay(
+                123, bounds, self.path, output, max_terrain_height_m=500,
+            )
+        run.assert_called_once_with(123, bounds, self.path, max_terrain_height_m=500)
+        self.assertEqual(returned, output)
+        pixels = mpimg.imread(output)
+        self.assertEqual(pixels.shape, (7, 7, 4))
+        np.testing.assert_allclose(pixels[1, 5], np.array([255, 220, 0, 160]) / 255)
+        np.testing.assert_allclose(pixels[5, 2], np.array([100, 130, 160, 160]) / 255)
+        self.assertEqual(np.count_nonzero(pixels[:, :, 3]), 2)
+        self.assertEqual(pixels[2, 1, 3], 0)
+        self.assertEqual(pixels[0, 0, 3], 0)
+
+    def test_overlay_runs_real_filter_and_respects_output_bounds(self):
+        self.save_dem()
+        output = Path(self.tempdir.name) / "overlay.png"
+        k = illumination_funcs.meters_per_degree
+        bounds = (-50 / k, -50 / k, 50 / k, 50 / k)
+        site, _ = illumination_funcs.sme.get_site_vec(0, 0, 0, 0)
+        _, _, up = illumination_funcs.directions(0, 0)
+        sun = site + 1e8 * up
+        with patch.object(illumination_funcs.sme, "get_sun_vec", return_value=(sun, 0)):
+            overlay.save_illumination_overlay(0, bounds, self.path, output)
+        pixels = mpimg.imread(output)
+        self.assertEqual(np.count_nonzero(pixels[:, :, 3]), 1)
+        self.assertAlmostEqual(pixels[3, 3, 3], 160 / 255)
+
+    def test_overlay_requires_png_extension(self):
+        with self.assertRaisesRegex(ValueError, "PNG"):
+            overlay.save_illumination_overlay(0, None, self.path, "overlay.jpg")
+
+    def test_modules_run_as_scripts_from_another_directory(self):
+        scripts = (ROOT / "Filters" / "filters.py",
+                   ROOT / "Filters" / "Sunlight" / "illumination.py")
+        for script in scripts:
+            with self.subTest(script=script):
+                result = subprocess.run(
+                    [sys.executable, str(script)], cwd=self.tempdir.name,
+                    capture_output=True, text=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_ridge_towards_sun_blocks_ray(self):
         self.heights[3, 5] = 100
@@ -81,16 +139,16 @@ class VisibilityTests(unittest.TestCase):
         inverse = ~self.dem.transform
         transform = np.array([inverse.a, inverse.b, inverse.c,
                               inverse.d, inverse.e, inverse.f])
-        site, _ = illumination.sme.get_site_vec(0, 0, 0, 0)
+        site, _ = illumination_funcs.sme.get_site_vec(0, 0, 0, 0)
         ray = self.sun - site
         ray /= np.linalg.norm(ray)
         args = (self.heights, np.zeros((7, 7), dtype=bool), 3, 3,
                 site * 1000, ray, 1e11, 1, transform, False, 0.0, 5)
-        compiled_result = illumination._trace_ray_numba(*args)
-        python_result = illumination._trace_ray_numba.py_func(*args)
+        compiled_result = illumination_funcs._trace_ray_numba(*args)
+        python_result = illumination_funcs._trace_ray_numba.py_func(*args)
         self.assertEqual(compiled_result, -1)
         self.assertEqual(compiled_result, python_result)
-        self.assertTrue(illumination._trace_ray_numba.nopython_signatures)
+        self.assertTrue(illumination_funcs._trace_ray_numba.nopython_signatures)
 
     def test_missing_site_elevation_raises(self):
         self.heights[3, 3] = np.nan
@@ -102,8 +160,8 @@ class VisibilityTests(unittest.TestCase):
             self.visibility(dem_array=np.zeros((2, 2)))
 
     def test_upward_ray_is_visible(self):
-        site, _ = illumination.sme.get_site_vec(0, 0, 0, 0)
-        _, _, up = illumination.directions(0, 0)
+        site, _ = illumination_funcs.sme.get_site_vec(0, 0, 0, 0)
+        _, _, up = illumination_funcs.directions(0, 0)
         self.sun = site + 1e8 * up
         self.assertIs(self.visibility(), True)
 
@@ -114,17 +172,17 @@ class VisibilityTests(unittest.TestCase):
 
     def test_dem_path_is_required_when_dataset_not_supplied(self):
         with self.assertRaisesRegex(ValueError, "dem_path"):
-            illumination.check_visibility(0, 0, 0, self.sun)
+            illumination_funcs.check_visibility(0, 0, 0, self.sun)
 
     def test_filter_returns_each_requested_pixel_once(self):
         self.heights[3, 5] = 100
         self.heights[2, 2] = np.nan
         self.dem.write(self.heights, 1)
         self.save_dem()
-        k = illumination.meters_per_degree
+        k = illumination_funcs.meters_per_degree
         bounds = (-250 / k, -250 / k, 250 / k, 250 / k)
-        with patch.object(illumination.sme, "get_sun_vec", return_value=(self.sun, 0)):
-            results = list(illumination.IlluminationFilter(0, bounds, self.path))
+        with patch.object(illumination_funcs.sme, "get_sun_vec", return_value=(self.sun, 0)):
+            results = list(illumination_funcs.IlluminationFilter(0, bounds, self.path))
         self.assertEqual(len(results), 25)
         self.assertEqual(len({(lon, lat) for lon, lat, _ in results}), 25)
         for lon, lat, result in results:
@@ -132,19 +190,19 @@ class VisibilityTests(unittest.TestCase):
             if np.isnan(self.heights[row, col]):
                 self.assertIsNone(result)
             else:
-                self.assertIs(result, illumination.check_visibility(
+                self.assertIs(result, illumination_funcs.check_visibility(
                     lon, lat, 0, self.sun, dem=self.dem))
 
     def test_filter_defaults_to_entire_supplied_dem(self):
         self.save_dem()
-        with patch.object(illumination.sme, "get_sun_vec", return_value=(self.sun, 0)):
-            results = list(Filters.run_illumination_filter(0, None, self.path))
+        with patch.object(illumination_funcs.sme, "get_sun_vec", return_value=(self.sun, 0)):
+            results = list(generic_filter.run_illumination_filter(0, None, self.path))
         self.assertEqual(len(results), 49)
 
     def test_filter_rejects_bounds_outside_dem(self):
         self.save_dem()
         with self.assertRaisesRegex(ValueError, "outside the DEM"):
-            list(illumination.IlluminationFilter(0, (-1, -1, 1, 1), self.path))
+            list(illumination_funcs.IlluminationFilter(0, (-1, -1, 1, 1), self.path))
 
     def test_dem_helpers_accept_path(self):
         self.heights[3, 3] = 42
@@ -153,21 +211,21 @@ class VisibilityTests(unittest.TestCase):
         self.assertEqual(moon_surface_getter.get_dem_array(self.path).shape, (7, 7))
 
     def test_run_illumination_filter_does_not_download_without_permission(self):
-        with patch.object(Filters.lola_hs, "download_crop") as download:
+        with patch.object(generic_filter.lola_hs, "download_crop") as download:
             with self.assertRaises(FileNotFoundError):
-                Filters.run_illumination_filter(0, (-1, -1, 1, 1), ROOT / "missing-test-dem.tif")
+                generic_filter.run_illumination_filter(0, (-1, -1, 1, 1), ROOT / "missing-test-dem.tif")
             download.assert_not_called()
 
     def test_run_illumination_filter_passes_requested_bounds_to_download(self):
         path = ROOT / "missing-test-dem.tif"
         bounds = (-1, 1, 1, 3)
-        with patch.object(Filters.lola_hs, "download_crop") as download:
-            Filters.run_illumination_filter(0, bounds, path, download=True)
+        with patch.object(generic_filter.lola_hs, "download_crop") as download:
+            generic_filter.run_illumination_filter(0, bounds, path, download=True)
             download.assert_called_once_with(bounds, path)
 
     def test_coordinates_outside_dem_raise(self):
         with self.assertRaises(ValueError):
-            illumination.check_visibility(2, 0, 0, self.sun, dem=self.dem)
+            illumination_funcs.check_visibility(2, 0, 0, self.sun, dem=self.dem)
 
     def test_polar_projection_is_rejected(self):
         self.dem.crs = rasterio.crs.CRS.from_epsg(4326)
@@ -175,14 +233,14 @@ class VisibilityTests(unittest.TestCase):
             self.visibility()
 
     def test_sun_vector_uses_site_kilometers(self):
-        site, _ = illumination.sme.get_site_vec(0, 0, 0, 0)
-        original = illumination.sme.get_sun_vec
-        illumination.sme.get_sun_vec = lambda et: (self.sun, 0)
+        site, _ = illumination_funcs.sme.get_site_vec(0, 0, 0, 0)
+        original = illumination_funcs.sme.get_sun_vec
+        illumination_funcs.sme.get_sun_vec = lambda et: (self.sun, 0)
         try:
-            result, _ = illumination.sme.get_site2sun_vec(0, 0, 0, 0)
+            result, _ = illumination_funcs.sme.get_site2sun_vec(0, 0, 0, 0)
             np.testing.assert_allclose(result, self.sun - site)
         finally:
-            illumination.sme.get_sun_vec = original
+            illumination_funcs.sme.get_sun_vec = original
 
 
 if __name__ == "__main__":

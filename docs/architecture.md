@@ -58,8 +58,10 @@ does not contain them.
 - API client/errors: `frontend/src/services/`.
 - Dataset generation: scripts under `lola_2d/`; use `scripts/manage.py prepare-data`.
 
-The capitalized `SMEData/` and `Sunlight/` module paths remain intact because
-existing scientific tools and tests import them. `legacy/website/` is the
+The standalone image generator lives in `Filters/Sunlight/`, with DEM helpers
+in `SurfaceData/` and shared ephemeris utilities in `SMEData/`.
+See [the illumination guide](../Filters/README.md) for examples and model limits.
+`legacy/website/` is the
 original static design reference and does not participate in the React build.
 
 ## Change discipline
