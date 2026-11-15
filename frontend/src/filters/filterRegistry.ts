@@ -6,27 +6,18 @@ import type {
 
 export const filterRegistry: FilterDefinition[] = [
   {
-    id: "sunElevation",
-    label: "Sun elevation",
-    description: "Minimum solar elevation angle",
-    type: "slider",
-    min: -10,
-    max: 30,
-    step: 1,
-    unit: "°",
-    defaultValue: 5,
+    id: "sunVisibility",
+    label: "Sun visibility",
+    description: "Sun center above the LOLA terrain horizon",
+    type: "visibility",
+    defaultValue: true,
   },
-
   {
-    id: "earthElevation",
-    label: "Earth elevation",
-    description: "Minimum Earth elevation angle",
-    type: "slider",
-    min: -10,
-    max: 30,
-    step: 1,
-    unit: "°",
-    defaultValue: 0,
+    id: "earthVisibility",
+    label: "Earth visibility",
+    description: "Earth center above the LOLA terrain horizon",
+    type: "visibility",
+    defaultValue: true,
   },
 
   {

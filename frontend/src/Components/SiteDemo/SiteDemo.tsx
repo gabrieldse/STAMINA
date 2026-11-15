@@ -3,10 +3,10 @@ import "./SiteDemo.css";
 
 const steps = [
   { target: ".explorer-map-area", title: "Explore the lunar map", text: "Scroll to zoom, drag to move, and click the surface to select a location. You can also choose a named landing region from the map’s site list. Try it here—the map is live." },
-  { target: ".explorer-left-panel", title: "Try the environmental filters", text: "Enable Sun or Earth elevation and adjust the minimum angle. Dimmed areas fail your thresholds at 00:00 UTC on the start date. Terrain overlay adds elevation contours; Temperature displays the Diviner layers." },
+  { target: ".explorer-left-panel", title: "Try the environmental filters", text: "Enable Sun visibility or Earth visibility to show only areas where that body clears the LOLA terrain horizon. Both enabled keeps their intersection. Terrain overlay adds elevation contours; Temperature displays the Diviner layers." },
   { target: ".explorer-analysis-form", title: "Set up your analysis", text: "Choose Single instant or Mission duration in Analysis mode on the left. Set the date on the right, and a duration for a mission. Single instant checks visibility at 00:00 UTC; mission mode covers the entire selected period." },
   { target: ".explorer-analysis-form", title: "Run a real analysis", text: "With a location selected, click Run Scientific Analysis. The site calculates Sun and Earth visibility for your settings. You can wait for it to finish before moving on; changing the site, date or filters clears the previous results." },
-  { target: ".explorer-result-grid", title: "Read the results", text: "Mission mode reports solar availability, Earth visibility and the longest outages. Single instant shows whether each body is above your threshold. These are geometric horizon estimates: terrain shadows are not included." },
+  { target: ".explorer-result-grid", title: "Read the results", text: "Mission mode reports solar availability, Earth visibility and the longest outages. Single instant shows whether each body center clears the LOLA terrain horizon. Terrain obstruction and lunar curvature are included." },
   { target: ".explorer-timeline", title: "Inspect the timeline", text: "After a mission analysis, gold bands show Sun visibility and blue bands show Earth visibility. Click a band or drag the slider to inspect a time in UTC. You’re ready to explore—your selections stay in place when you finish." },
 ];
 

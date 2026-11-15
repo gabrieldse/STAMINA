@@ -48,29 +48,17 @@ class AnalysisTests(unittest.TestCase):
         self.assertEqual(longest_outage([False, False, True, False], .5), 1)
         self.assertEqual(longest_outage([True, True], .5), 0)
 
-    def test_elevation_filters_change_only_their_body(self):
-        base = self.client.post("/api/analyze", json=self.payload).json()
-        for field, metric, other in [("sunElevation", "sunlightPercent", "earthVisibilityPercent"),
-                                      ("earthElevation", "earthVisibilityPercent", "sunlightPercent")]:
-            low = self.client.post("/api/analyze", json={**self.payload, "filters": {field: -10}}).json()
-            high = self.client.post("/api/analyze", json={**self.payload, "filters": {field: 30}}).json()
-            self.assertGreater(low[metric], high[metric])
-            self.assertEqual(high[other], base[other])
-
-    def test_map_positions_match_instant_analysis(self):
+    def test_visibility_uses_terrain_horizon(self):
         import numpy as np
-        response = self.client.get("/api/positions?date=2026-11-14")
-        self.assertEqual(response.status_code, 200)
-        vectors = response.json()
-        self.payload["filters"] = {"analysisMode": "instant", "sunElevation": 5, "earthElevation": 5}
-        result = self.client.post("/api/analyze", json=self.payload).json()
-        lat = np.radians(-89)
-        up = np.array([np.cos(lat), 0, np.sin(lat)])
+        from backend.horizon import body_visibility
+        vectors = self.client.get("/api/positions?date=2026-11-14").json()
+        result = self.client.post("/api/analyze", json={**self.payload, "filters": {"analysisMode": "instant"}}).json()
         for body, metric in [("sun", "sunlightPercent"), ("earth", "earthVisibilityPercent")]:
-            v = np.array(vectors[body]) - 1737.4*up
-            angle = np.degrees(np.arcsin(v@up/np.linalg.norm(v)))
-            self.assertEqual(result[metric], 100 if angle > 5 else 0)
-        self.assertEqual(self.client.get("/api/positions?date=2200-01-01").status_code, 422)
+            expected = body_visibility(np.array([vectors[body]]), -89, 0)[0]
+            self.assertEqual(result[metric], 100 if expected else 0)
+        horizon = self.client.get("/api/horizon?latitude=-89&longitude=0").json()
+        self.assertEqual(len(horizon["horizonRadians"]), 720)
+        self.assertTrue(np.ptp(horizon["horizonRadians"]) > 0)
 
     def test_position_timeline_matches_daily_positions(self):
         import numpy as np

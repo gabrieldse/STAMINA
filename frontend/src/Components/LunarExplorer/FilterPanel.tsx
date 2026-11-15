@@ -46,7 +46,7 @@ export default function FilterPanel({
         Customize the environmental constraints
         for your lunar site.
       </p>
-      <p>Elevation filters dim failing areas at the start date, 00:00 UTC. Run Analysis to update mission results and the timeline.</p>
+      <p>Enable Sun or Earth visibility to show only visible areas on the map at the displayed time, accounting for LOLA terrain. With both enabled, only their intersection remains. Run Analysis for mission percentages and outages.</p>
 
       {filterRegistry.map((filter) => {
         const state = filters[filter.id];

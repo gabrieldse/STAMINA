@@ -477,7 +477,7 @@ export default function LunarExplorer() {
               <span>{instantMode ? "Sun at observation time" : "Solar availability"}</span>
 
               <strong>
-                {instantMode && isComputed ? (result?.sunlightPercent === 100 ? "Above threshold" : "Below threshold") : formatMetric(
+                {instantMode && isComputed ? (result?.sunlightPercent === 100 ? "Visible" : "Terrain-obstructed") : formatMetric(
                   result?.sunlightPercent,
                   "%"
                 )}
@@ -489,7 +489,7 @@ export default function LunarExplorer() {
               <span>{instantMode ? "Earth at observation time" : "Earth visibility"}</span>
 
               <strong>
-                {instantMode && isComputed ? (result?.earthVisibilityPercent === 100 ? "Above threshold" : "Below threshold") : formatMetric(
+                {instantMode && isComputed ? (result?.earthVisibilityPercent === 100 ? "Visible" : "Terrain-obstructed") : formatMetric(
                   result?.earthVisibilityPercent,
                   "%"
                 )}

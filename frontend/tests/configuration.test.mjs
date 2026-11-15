@@ -19,10 +19,18 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../src');
 const { buildConfiguration, parseConfiguration } = load(resolve(root, 'filters/configuration.ts'));
 const { createInitialFilters } = load(resolve(root, 'filters/filterRegistry.ts'));
 const { DEFAULT_TEMPERATURE_CONFIG } = load(resolve(root, 'types/temperature.ts'));
+const { apiErrorMessage } = load(resolve(root, 'services/apiError.ts'));
+
+test('API errors identify stale visibility servers and invalid request fields', () => {
+  assert.match(apiErrorMessage({ detail: [{ loc: ['body', 'filters', 'sunVisibility'], type: 'extra_forbidden', msg: 'Extra inputs are not permitted' }] }, 422), /older version.*Restart/);
+  assert.equal(apiErrorMessage({ detail: [{ loc: ['body', 'durationDays'], msg: 'Input should be greater than or equal to 1' }] }, 422), 'durationDays: Input should be greater than or equal to 1');
+  assert.equal(apiErrorMessage({ detail: 'Missing terrain data' }, 503), 'Missing terrain data');
+  assert.match(apiErrorMessage(null, 404), /Restart/);
+});
 const filters = {
   ...createInitialFilters(),
-  sunElevation: { enabled: true, value: 12 },
-  earthElevation: { enabled: false, value: -3 },
+  sunVisibility: { enabled: true, value: true },
+  earthVisibility: { enabled: false, value: true },
   terrain: { enabled: true, value: false },
   analysisMode: { enabled: true, value: 'instant' },
 };
@@ -52,7 +60,7 @@ test('export is a snapshot independent of subsequent edits', () => {
   const current = structuredClone({ temperature, rules, filters });
   const exported = buildConfiguration(current.temperature, current.rules, current.filters);
   current.rules[0].threshold = 1;
-  current.filters.sunElevation.value = 1;
+  current.filters.sunVisibility.value = 1;
   current.temperature.temperatureK.min = 1;
   assert.deepEqual(parseConfiguration(exported), { temperature, rules, filters });
 });
@@ -67,8 +75,8 @@ test('legacy files remain supported without overwriting unrelated built-in filte
 
 test('invalid settings and duplicate custom IDs reject the whole import', () => {
   for (const mutate of [
-    data => { data.filters.sunElevation.value = 90; },
-    data => { data.filters.earthElevation.enabled = 'false'; },
+    data => { data.filters.sunVisibility.value = 90; },
+    data => { data.filters.earthVisibility.enabled = 'false'; },
     data => { delete data.filters.terrain; },
     data => { data.southPoleTemperatures.selection.temperatureK = { min: 200, max: 10 }; },
     data => { data.rules.push(data.rules[0]); },

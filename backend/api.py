@@ -2,17 +2,44 @@
 from datetime import date, timedelta, datetime, timezone
 from datetime import date as CalendarDate
 from threading import Lock
+from typing import Literal
 
 import numpy as np
 import spiceypy as sp
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field, ConfigDict
 
+from backend.horizon import body_visibility, profile
+from backend.visibility_map import visibility_map
+from backend.visibility_kernel import NUMBA_AVAILABLE
 from SMEData.kernel_loaders import load_kernels
 from backend.custom_filter_engine import CustomFilterRule, evaluate_custom_filters
 
 app = FastAPI()
 SPICE_LOCK = Lock()
+
+
+class VisibilityMapRequest(BaseModel):
+    sun: list[float] | None = Field(default=None, min_length=3, max_length=3)
+    earth: list[float] | None = Field(default=None, min_length=3, max_length=3)
+    size: int = Field(default=768, ge=32, le=2048, strict=True)
+    encoding: Literal["array", "bitset"] = "array"
+
+
+@app.post("/api/visibility-map")
+def map_visibility(request: VisibilityMapRequest):
+    if request.sun is None and request.earth is None:
+        raise HTTPException(422, "Select Sun or Earth visibility.")
+    for vector in (request.sun, request.earth):
+        if vector is not None and (not np.isfinite(vector).all() or np.linalg.norm(vector) <= 1740):
+            raise HTTPException(422, "Invalid Moon-fixed body position.")
+    try:
+        # Keep installations without the optional compiler responsive too.
+        size = request.size if NUMBA_AVAILABLE else min(request.size, 512)
+        return visibility_map(size, tuple(request.sun) if request.sun else None,
+                              tuple(request.earth) if request.earth else None, request.encoding)
+    except ValueError as exc:
+        raise HTTPException(503, str(exc)) from exc
 
 
 @app.get("/api/position-timeline")
@@ -63,8 +90,8 @@ class Site(BaseModel):
 
 class Filters(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    sunElevation: float = Field(default=0, ge=-10, le=30, allow_inf_nan=False)
-    earthElevation: float = Field(default=0, ge=-10, le=30, allow_inf_nan=False)
+    sunVisibility: bool = True
+    earthVisibility: bool = True
     terrain: bool = False
     analysisMode: str = Field(default="period", pattern="^(instant|period)$")
 
@@ -107,15 +134,12 @@ def analyze(request: AnalysisRequest):
             count = 1 if instant else request.durationDays * 24 * 6
             step = 0 if instant else (stop - start) / count
             times = np.array([start]) if instant else start + (np.arange(count) + .5) * step
-            lon, lat = np.radians([request.site.longitude, request.site.latitude])
-            up = np.array([np.cos(lat)*np.cos(lon), np.cos(lat)*np.sin(lon), np.sin(lat)])
-            site = 1737.4 * up
             visibility = []
-            for body, threshold in [("SUN", request.filters.sunElevation), ("EARTH", request.filters.earthElevation)]:
+            for body in ["SUN", "EARTH"]:
                 positions, _ = sp.spkpos(body, times, "IAU_MOON", "NONE", "MOON")
-                vectors = np.asarray(positions).reshape(-1, 3) - site
-                elevation = np.degrees(np.arcsin(np.clip((vectors @ up) / np.linalg.norm(vectors, axis=1), -1, 1)))
-                visibility.append(elevation > threshold)
+                visibility.append(body_visibility(positions, request.site.latitude, request.site.longitude))
+        except ValueError as exc:
+            raise HTTPException(503, str(exc)) from exc
         except sp.utils.exceptions.SpiceyError as exc:
             raise HTTPException(503, "SPICE data could not be loaded or does not cover this mission.") from exc
         finally:
@@ -126,7 +150,7 @@ def analyze(request: AnalysisRequest):
     if not instant:
         metrics.update(maxDarknessHours=longest_outage(sun, step/3600),
                        maxCommunicationBlackoutHours=longest_outage(earth, step/3600))
-    message = ("Geometric horizon estimate using NASA DE440s and IAU_MOON; terrain shadows and obstructions are not included. "
+    message = ("LOLA 240 m topographic horizon, 0.5-degree azimuth sectors, NASA DE440s / IAU_MOON. Surface observer; body-center visibility; finite disks and scattered light excluded. "
                + ("Single instant at 00:00 UTC; outage durations are unavailable." if instant else
                   "10-minute samples over the selected mission, starting at 00:00 UTC; outage durations are approximate and limited to this window."))
     return dict(status="computed", siteId=request.site.id, **metrics, message=message,
@@ -134,3 +158,12 @@ def analyze(request: AnalysisRequest):
                               endUtc=end.isoformat() + "T00:00:00Z", sampleCount=count,
                               instant=instant, sun=visibility_segments(sun), earth=visibility_segments(earth)),
                 customFilterResults=evaluate_custom_filters(request.customFilters, metrics))
+
+
+@app.get("/api/horizon")
+def horizon(latitude: float = Query(ge=-90, le=-80), longitude: float = Query(ge=-180, le=180)):
+    try:
+        observer, skyline = profile(latitude, longitude)
+        return dict(observerM=observer.tolist(), horizonRadians=skyline.tolist())
+    except ValueError as exc:
+        raise HTTPException(503, str(exc)) from exc

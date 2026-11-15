@@ -1,0 +1,55 @@
+{
+  "python": "3.14.0",
+  "numba": "0.68.1",
+  "threads": 6,
+  "firstCompiledCallSeconds": 0.5688,
+  "measurements": [
+    {
+      "size": 256,
+      "resolutionM": 2375.0,
+      "sunSeconds": 0.0345,
+      "sunNumpySeconds": 0.5526,
+      "earthSeconds": 0.0152,
+      "earthNumpySeconds": 0.2867,
+      "combinedMapSeconds": 0.0433,
+      "jsonSeconds": 0.0,
+      "responseBytes": 11048
+    },
+    {
+      "size": 384,
+      "resolutionM": 1583.4,
+      "sunSeconds": 0.0669,
+      "earthSeconds": 0.0292,
+      "combinedMapSeconds": 0.1089,
+      "jsonSeconds": 0.0001,
+      "responseBytes": 24701
+    },
+    {
+      "size": 768,
+      "resolutionM": 791.7,
+      "sunSeconds": 0.1725,
+      "earthSeconds": 0.11,
+      "combinedMapSeconds": 0.3075,
+      "jsonSeconds": 0.0002,
+      "responseBytes": 98428
+    },
+    {
+      "size": 1536,
+      "resolutionM": 395.8,
+      "sunSeconds": 0.6477,
+      "earthSeconds": 0.4145,
+      "combinedMapSeconds": 1.6457,
+      "jsonSeconds": 0.0019,
+      "responseBytes": 393342
+    },
+    {
+      "size": 2048,
+      "resolutionM": 296.9,
+      "sunSeconds": 1.8666,
+      "earthSeconds": 1.1213,
+      "combinedMapSeconds": 3.2662,
+      "jsonSeconds": 0.003,
+      "responseBytes": 699178
+    }
+  ]
+}

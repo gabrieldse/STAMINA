@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { apiErrorMessage } from "../../services/apiError";
 
 import type {
   FilterStates,
@@ -28,6 +29,8 @@ type Props = {
   date: string;
   positions: BodyPositions | null;
   positionStatus: string;
+  onVisibilityReady?: (ready: boolean) => void;
+  playing?: boolean;
   selectedSite: LunarSite | null;
   filters: FilterStates;
   onSiteSelect: (site: LunarSite) => void;
@@ -67,6 +70,8 @@ function formatCoordinates(latitude: number, longitude: number) {
 export default function MapPanel({
   positions,
   positionStatus,
+  onVisibilityReady,
+  playing = false,
   selectedSite,
   filters,
   onSiteSelect,
@@ -76,20 +81,51 @@ export default function MapPanel({
 }: Props) {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [viewerReady, setViewerReady] = useState(false);
+  const [visibilityStatus, setVisibilityStatus] = useState("");
+  const sunVisible = Boolean(filters.sunVisibility?.enabled);
+  const earthVisible = Boolean(filters.earthVisibility?.enabled);
   const terrainEnabled = Boolean(filters.terrain?.enabled && filters.terrain.value);
   useEffect(() => {
     if (viewerReady) postToViewer({ type: "stamina:terrain-overlay", enabled: terrainEnabled });
   }, [viewerReady, terrainEnabled]);
-  const sunThreshold = filters.sunElevation?.enabled ? Number(filters.sunElevation.value) : null;
-  const earthThreshold = filters.earthElevation?.enabled ? Number(filters.earthElevation.value) : null;
   useEffect(() => {
     if (!viewerReady) return;
-    postToViewer({ type: "stamina:elevation-filter", config: positions && (sunThreshold !== null || earthThreshold !== null)
-      ? { ...positions, sunThreshold, earthThreshold } : null });
-  }, [viewerReady, positions, sunThreshold, earthThreshold]);
-  const elevationStatus = positionStatus || (positions
-    ? positions.utc.replace("T", " ").replace("Z", " UTC") + " ? Dimmed: fails an enabled elevation threshold ? No terrain shadows"
-    : "");
+    if (!sunVisible && !earthVisible) {
+      onVisibilityReady?.(true);
+      postToViewer({ type: "stamina:visibility-mask", config: null });
+      setVisibilityStatus("");
+      return;
+    }
+    const controller = new AbortController();
+    onVisibilityReady?.(false);
+    postToViewer({ type: "stamina:visibility-mask", config: { pending: true } });
+    setVisibilityStatus("Calculating visible areas from LOLA terrain...");
+    const timer = window.setTimeout(async () => {
+      if (!positions) return;
+      try {
+        // Show a quick result, then refine without blanking the preview.
+        for (const size of playing ? [768] : [384, 1536]) {
+          if (controller.signal.aborted) return;
+          const response = await fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/visibility-map`, {
+            method: "POST", headers: { "Content-Type": "application/json" }, signal: controller.signal,
+            body: JSON.stringify({ sun: sunVisible ? positions.sun : null, earth: earthVisible ? positions.earth : null, size, encoding: "bitset" }),
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(apiErrorMessage(data, response.status));
+          if (!Number.isInteger(data.size) || data.size < 32 || data.size > size || data.encoding !== "bitset-msb" ||
+            typeof data.visiblePacked !== "string" || atob(data.visiblePacked).length !== Math.ceil(data.size*data.size/8)) throw new Error("Incomplete visibility map.");
+          if (controller.signal.aborted) return;
+          postToViewer({ type: "stamina:visibility-mask", config: data });
+          setVisibilityStatus(`${sunVisible && earthVisible ? "Sun AND Earth" : sunVisible ? "Sun" : "Earth"} visible areas only | LOLA terrain | ${Math.round(data.resolutionM)} m / cell${!playing && size === 384 ? " | Refining..." : ""}`);
+        }
+        onVisibilityReady?.(true);
+      } catch (cause) {
+        if (!controller.signal.aborted) setVisibilityStatus(cause instanceof Error ? cause.message : "Visibility map unavailable.");
+      }
+    }, 150);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [viewerReady, positions, sunVisible, earthVisible, onVisibilityReady, playing]);
+  const elevationStatus = [positions?.utc.replace("T", " ").replace("Z", " UTC"), visibilityStatus, positionStatus].filter(Boolean).join(" | ");
   // Site whose info card the user closed; it reopens for the next site.
   const [closedInfoId, setClosedInfoId] = useState<string | null>(null);
   const infoSite = selectedSite?.details;
