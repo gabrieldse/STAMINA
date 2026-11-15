@@ -1,0 +1,301 @@
+
+.delay-page {
+  max-width: 920px;
+}
+
+.delay-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #535353;
+  color: #b9b9b9;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.delay-brand {
+  color: #e5f0ff;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.delay-divider {
+  color: #898989;
+}
+
+.delay-status {
+  padding: 8px 12px;
+  border: 1px solid #a96b2b;
+  border-radius: 20px;
+  background: #322516;
+  color: #ffc078;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.delay-page > h1 {
+  margin: 12px 0;
+}
+
+.delay-intro {
+  color: #cacaca;
+  line-height: 1.7;
+}
+
+.delay-alert {
+  margin-top: 28px;
+  padding: 28px;
+  border: 1px solid #ab7135;
+  border-left: 5px solid #f4aa56;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #322719, #3a3a3a);
+}
+
+.delay-alert-heading {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.delay-warning-icon {
+  font-size: 32px;
+  color: #ffbd70;
+}
+
+.delay-alert-label {
+  color: #ffc078;
+  font-size: 11px;
+  letter-spacing: 2px;
+  font-weight: 700;
+}
+
+.delay-alert h2 {
+  margin: 7px 0;
+  color: #fff0da;
+  font-size: 24px;
+}
+
+.delay-alert p {
+  color: #dfd4c4;
+  line-height: 1.7;
+}
+
+.delay-fiction {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 11px;
+  color: #b2b2b2;
+}
+
+.delay-mission-id {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 28px 0;
+}
+
+.delay-mission-id > div {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px;
+  background: #2c2c2c;
+  border: 1px solid #535353;
+  border-radius: 10px;
+}
+
+.delay-mission-id span,
+.delay-date-card span {
+  color: #acacac;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+.delay-mission-id strong {
+  font-size: 17px;
+}
+
+.delay-section-title {
+  margin: 32px 0 18px;
+  font-size: 22px;
+}
+
+.delay-date-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.delay-date-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+  background: #2c2c2c;
+  border: 1px solid #5f5f5f;
+  border-radius: 12px;
+}
+
+.delay-date-card strong {
+  font-size: 25px;
+  color: #f1f6ff;
+}
+
+.delay-date-card small {
+  color: #aaaaaa;
+}
+
+.delay-date-card.revised {
+  background: #28251f;
+  border-color: #936c39;
+}
+
+.delay-date-card.revised strong {
+  color: #ffc681;
+}
+
+.delay-control {
+  margin-top: 24px;
+  padding: 24px;
+  background: #2c2c2c;
+  border: 1px solid #535353;
+  border-radius: 12px;
+}
+
+.delay-control-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.delay-control-header label {
+  margin: 0;
+}
+
+.delay-control-header strong {
+  color: #ffc681;
+  font-size: 22px;
+}
+
+.delay-control input[type="range"] {
+  margin-top: 22px;
+  width: 100%;
+  accent-color: #f4aa56;
+}
+
+.delay-slider-labels {
+  display: flex;
+  justify-content: space-between;
+  color: #9b9b9b;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.delay-analysis {
+  margin-top: 28px;
+  padding: 24px;
+  background: #373737;
+  border: 1px solid #666666;
+  border-radius: 12px;
+}
+
+.delay-analysis-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.delay-analysis-icon {
+  color: #80bcff;
+  font-size: 24px;
+}
+
+.delay-analysis h2 {
+  margin: 0;
+  font-size: 21px;
+}
+
+.delay-analysis p {
+  color: #d4d4d4;
+  line-height: 1.7;
+}
+
+.delay-page .delay-briefing-toggle {
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px;
+  background: transparent;
+  border: 1px solid #606060;
+  color: #a7cfff;
+  text-align: left;
+  font-size: 14px;
+}
+
+.delay-briefing {
+  padding: 22px;
+  border: 1px solid #606060;
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  background: #2e2e2e;
+  color: #d4d4d4;
+  line-height: 1.7;
+}
+
+.delay-director-message {
+  margin-top: 28px;
+  padding: 24px;
+  border-left: 3px solid #73b8ff;
+  background: #2c2c2c;
+}
+
+.delay-director-message span {
+  color: #80bcff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+
+.delay-director-message p {
+  font-size: 18px;
+  font-style: italic;
+  line-height: 1.6;
+}
+
+.delay-actions {
+  display: flex;
+  gap: 14px;
+  margin-top: 30px;
+}
+
+.delay-page .delay-actions button {
+  margin-top: 0;
+}
+
+.delay-page .delay-back {
+  background: #4d4d4d;
+}
+
+.delay-page .delay-primary {
+  background: #226ce1;
+}
+
+@media (max-width: 700px) {
+  .delay-topbar {
+    flex-wrap: wrap;
+  }
+
+  .delay-mission-id,
+  .delay-date-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .delay-actions {
+    flex-direction: column;
+  }
+
+  .delay-date-card strong {
+    font-size: 22px;
+  }
+}

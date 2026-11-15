@@ -1,0 +1,303 @@
+{
+  "version": 1,
+  "description": "Apollo landing sites and NASA's Artemis III candidate regions. Latitude/longitude in degrees, planetocentric, east-positive (west is negative). Artemis coordinates are approximate region centres. Apollo sites are near the equator and fall outside the 80°S polar map; they are kept here for the equatorial views. Artemis 'region' polygons ([lat, lon] corners) come from NASA Moon Trek's A3_Named_regions layer (2022 names; Mons Mouton Plateau was Leibnitz Beta Plateau). Peak near Cabeus B, Mons Mouton and Slater Plain were added in 2024 and have no polygon there.",
+  "sites": [
+    {
+      "id": "apollo-11",
+      "name": "Apollo 11",
+      "program": "Apollo",
+      "color": "#f4f78f",
+      "latitude": 0.67416,
+      "longitude": 23.47314,
+      "site": "Mare Tranquillitatis — Tranquility Base",
+      "landingDate": "1969-07-20",
+      "terrain": "Relatively flat",
+      "goal": "Land the first humans on the Moon",
+      "facts": [
+        ["Launch", "16 July 1969"],
+        ["Landing", "20 July 1969"],
+        ["Crew", "Neil Armstrong, Buzz Aldrin (surface) · Michael Collins (orbit)"],
+        ["On the Moon", "≈ 21 h 36 min · 1 moonwalk of ≈ 2 h 31 min"],
+        ["Samples", "≈ 21.5 kg"]
+      ],
+      "story": "First crewed landing on the Moon. Armstrong had to fly the lunar module Eagle by hand to avoid a boulder field, with very little fuel left. Armstrong and then Aldrin walked on the surface, planted the US flag and set up a seismometer and a laser retroreflector that is still in use today. Splashdown on 24 July 1969."
+    },
+    {
+      "id": "apollo-12",
+      "name": "Apollo 12",
+      "program": "Apollo",
+      "color": "#e83ee8",
+      "latitude": -3.0128,
+      "longitude": -23.4219,
+      "site": "Oceanus Procellarum — next to the Surveyor 3 probe",
+      "landingDate": "1969-11-19",
+      "terrain": "Relatively flat",
+      "goal": "Recover parts of the Surveyor 3 probe",
+      "facts": [
+        ["Launch", "14 November 1969"],
+        ["Landing", "19 November 1969"],
+        ["Crew", "Pete Conrad, Alan Bean (surface) · Richard Gordon (orbit)"],
+        ["On the Moon", "≈ 31 h · 2 moonwalks (≈ 7 h 45 min)"],
+        ["Samples", "≈ 34 kg"]
+      ],
+      "story": "The rocket was struck by lightning twice shortly after liftoff, but the mission continued. First precision landing: the crew touched down about 180 m from Surveyor 3 and brought back parts of it to study how the lunar environment had affected them. The astronauts also deployed the first complete ALSEP science station. Splashdown on 24 November 1969."
+    },
+    {
+      "id": "apollo-14",
+      "name": "Apollo 14",
+      "program": "Apollo",
+      "color": "#5bc0eb",
+      "latitude": -3.64589,
+      "longitude": -17.47194,
+      "site": "Fra Mauro Highlands",
+      "landingDate": "1971-02-05",
+      "terrain": "Plateau",
+      "goal": "Study the ground of the Fra Mauro formation",
+      "facts": [
+        ["Launch", "31 January 1971"],
+        ["Landing", "5 February 1971"],
+        ["Crew", "Alan Shepard, Edgar Mitchell (surface) · Stuart Roosa (orbit)"],
+        ["On the Moon", "≈ 33 h · 2 moonwalks (≈ 9 h 22 min)"],
+        ["Samples", "≈ 43 kg"]
+      ],
+      "story": "Apollo 14 went to Fra Mauro, the target Apollo 13 never reached, to sample material thought to be ejecta from the Imbrium basin. The crew pulled their tools and samples on a hand cart, and Shepard famously hit two golf balls on the surface. Splashdown on 9 February 1971."
+    },
+    {
+      "id": "apollo-15",
+      "name": "Apollo 15",
+      "program": "Apollo",
+      "color": "#4fd97b",
+      "latitude": 26.13239,
+      "longitude": 3.6333,
+      "site": "Hadley–Apennine — at the foot of the Apennines, near Hadley Rille",
+      "landingDate": "1971-07-30",
+      "terrain": "Mountains and a valley",
+      "goal": "Study a geologically interesting region with a valley and lunar mountains",
+      "facts": [
+        ["Launch", "26 July 1971"],
+        ["Landing", "30 July 1971"],
+        ["Crew", "David Scott, James Irwin (surface) · Alfred Worden (orbit)"],
+        ["On the Moon", "≈ 67 h · 3 moonwalks (≈ 18 h 30 min)"],
+        ["Samples", "≈ 77 kg"]
+      ],
+      "story": "First 'J' mission: longer and more scientific, with the first Lunar Roving Vehicle, which covered about 28 km. The crew brought back the 'Genesis Rock', a piece of very old lunar crust. Scott also dropped a hammer and a feather on camera to show that they fall at the same rate without air. Splashdown on 7 August 1971."
+    },
+    {
+      "id": "apollo-16",
+      "name": "Apollo 16",
+      "program": "Apollo",
+      "color": "#b388ff",
+      "latitude": -8.9734,
+      "longitude": 15.5011,
+      "site": "Descartes Highlands",
+      "landingDate": "1972-04-21",
+      "terrain": "Plateau",
+      "goal": "Sample the lunar highlands, thought to be volcanic at Descartes",
+      "facts": [
+        ["Launch", "16 April 1972"],
+        ["Landing", "21 April 1972"],
+        ["Crew", "John Young, Charles Duke (surface) · Ken Mattingly (orbit)"],
+        ["On the Moon", "≈ 71 h · 3 moonwalks (≈ 20 h 14 min)"],
+        ["Samples", "≈ 96 kg"]
+      ],
+      "story": "The only Apollo landing in the central highlands. Geologists expected volcanic rocks, but the samples were mostly impact breccias, which changed how the highlands were understood. The crew drove the lunar rover about 27 km. Splashdown on 27 April 1972."
+    },
+    {
+      "id": "apollo-17",
+      "name": "Apollo 17",
+      "program": "Apollo",
+      "color": "#f2601f",
+      "latitude": 20.1908,
+      "longitude": 30.7717,
+      "site": "Taurus–Littrow — a valley bordered by mountain massifs",
+      "landingDate": "1972-12-11",
+      "terrain": "Valley between massifs",
+      "goal": "Sample old highland rock and young volcanic material in one valley",
+      "facts": [
+        ["Launch", "7 December 1972 (at night)"],
+        ["Landing", "11 December 1972"],
+        ["Crew", "Eugene Cernan, Harrison Schmitt (surface) · Ronald Evans (orbit)"],
+        ["On the Moon", "≈ 75 h · 3 moonwalks (≈ 22 h)"],
+        ["Samples", "≈ 110 kg"]
+      ],
+      "story": "The last crewed mission to the Moon to date. Harrison Schmitt, the only geologist to walk on the Moon, found orange soil made of volcanic glass beads more than 3 billion years old. The crew drove about 36 km in the rover. The famous 'Blue Marble' photo of Earth was taken on the way out. Splashdown on 19 December 1972."
+    },
+    {
+      "id": "artemis-peak-near-cabeus-b",
+      "name": "Peak near Cabeus B",
+      "program": "Artemis",
+      "color": "#ffffff",
+      "latitude": -83.6,
+      "longitude": -68.7,
+      "site": "Artemis III candidate region — a peak near the crater Cabeus B",
+      "terrain": "Peak",
+      "goal": "Crewed landing near permanently shadowed regions",
+      "facts": [
+        ["Program", "Artemis III candidate region"]
+      ],
+      "story": "One of the nine candidate landing regions NASA identified for Artemis III. It sits near Cabeus, the crater where the LCROSS impactor detected water ice in 2009."
+    },
+    {
+      "id": "artemis-haworth",
+      "name": "Haworth",
+      "program": "Artemis",
+      "color": "#ffffff",
+      "latitude": -86.8,
+      "longitude": -22.8,
+      "site": "Artemis III candidate region — by Haworth crater",
+      "terrain": "Crater rim",
+      "goal": "Crewed landing near permanently shadowed regions",
+      "facts": [
+        ["Program", "Artemis III candidate region"]
+      ],
+      "story": "One of the nine candidate landing regions NASA identified for Artemis III, next to Haworth, a large permanently shadowed crater and one of the coldest places on the map.",
+      "region": [
+        [-86.1124, -26.652],
+        [-86.9578, -34.9818],
+        [-87.3935, -16.9908],
+        [-86.4428, -12.3618],
+        [-86.1124, -26.652]
+      ]
+    },
+    {
+      "id": "artemis-malapert-massif",
+      "name": "Malapert Massif",
+      "program": "Artemis",
+      "color": "#ffffff",
+      "latitude": -86.0,
+      "longitude": -0.2,
+      "site": "Artemis III candidate region — Malapert Massif",
+      "terrain": "Mountain massif",
+      "goal": "Crewed landing near permanently shadowed regions",
+      "facts": [
+        ["Program", "Artemis III candidate region"]
+      ],
+      "story": "One of the nine candidate landing regions NASA identified for Artemis III. Malapert is a large mountain massif on the Earth-facing side of the pole, which helps direct communication with Earth.",
+      "region": [
+        [-85.6339, -4.7636],
+        [-86.3228, -5.6595],
+        [-86.3259, 5.1479],
+        [-85.6366, 4.3323],
+        [-85.6339, -4.7636]
+      ]
+    },
+    {
+      "id": "artemis-mons-mouton-plateau",
+      "name": "Mons Mouton Plateau",
+      "program": "Artemis",
+      "color": "#ffffff",
+      "latitude": -85.4,
+      "longitude": 31.7,
+      "site": "Artemis III candidate region — plateau of Mons Mouton",
+      "terrain": "Plateau",
+      "goal": "Crewed landing near permanently shadowed regions",
+      "facts": [
+        ["Program", "Artemis III candidate region"]
+      ],
+      "story": "One of the nine candidate landing regions NASA identified for Artemis III, on the flat top of Mons Mouton (formerly Leibnitz Beta), a mountain named after NASA mathematician Melba Roy Mouton.",
+      "region": [
+        [-85.3271, 27.288],
+        [-85.7883, 30.5792],
+        [-85.4974, 36.3666],
+        [-85.0633, 32.7352],
+        [-85.3271, 27.288]
+      ]
+    },
+    {
+      "id": "artemis-mons-mouton",
+      "name": "Mons Mouton",
+      "program": "Artemis",
+      "color": "#ffffff",
+      "latitude": -84.3,
+      "longitude": 30.6,
+      "site": "Artemis III candidate region — Mons Mouton",
+      "terrain": "Mountain",
+      "goal": "Crewed landing near permanently shadowed regions",
+      "facts": [
+        ["Program", "Artemis III candidate region"]
+      ],
+      "story": "One of the nine candidate landing regions NASA identified for Artemis III, on Mons Mouton, a mountain named after NASA mathematician Melba Roy Mouton."
+    },
+    {
+      "id": "artemis-nobile-rim-1",
+      "name": "Nobile Rim 1",
+      "program": "Artemis",
+      "color": "#ffffff",
+      "latitude": -85.4,
+      "longitude": 37.3,
+      "site": "Artemis III candidate region — rim of Nobile crater",
+      "terrain": "Crater rim",
+      "goal": "Crewed landing near permanently shadowed regions",
+      "facts": [
+        ["Program", "Artemis III candidate region"]
+      ],
+      "story": "One of the nine candidate landing regions NASA identified for Artemis III, on the rim of Nobile crater.",
+      "region": [
+        [-85.3533, 31.6608],
+        [-85.8992, 36.5014],
+        [-85.4763, 43.2285],
+        [-84.9763, 38.0728],
+        [-85.3533, 31.6608]
+      ]
+    },
+    {
+      "id": "artemis-nobile-rim-2",
+      "name": "Nobile Rim 2",
+      "program": "Artemis",
+      "color": "#ffffff",
+      "latitude": -84.0,
+      "longitude": 58.8,
+      "site": "Artemis III candidate region — rim of Nobile crater",
+      "terrain": "Crater rim",
+      "goal": "Crewed landing near permanently shadowed regions",
+      "facts": [
+        ["Program", "Artemis III candidate region"]
+      ],
+      "story": "One of the nine candidate landing regions NASA identified for Artemis III, on another part of the rim of Nobile crater.",
+      "region": [
+        [-84.0479, 54.4623],
+        [-84.4046, 59.9622],
+        [-83.8263, 63.0247],
+        [-83.5015, 57.8407],
+        [-84.0479, 54.4623]
+      ]
+    },
+    {
+      "id": "artemis-de-gerlache-rim-2",
+      "name": "de Gerlache Rim 2",
+      "program": "Artemis",
+      "color": "#ffffff",
+      "latitude": -88.2,
+      "longitude": -64.6,
+      "site": "Artemis III candidate region — rim of de Gerlache crater",
+      "terrain": "Crater rim",
+      "goal": "Crewed landing near permanently shadowed regions",
+      "facts": [
+        ["Program", "Artemis III candidate region"]
+      ],
+      "story": "One of the nine candidate landing regions NASA identified for Artemis III, on the rim of de Gerlache crater, close to the pole.",
+      "region": [
+        [-87.7853, -60.5725],
+        [-88.0239, -77.4712],
+        [-88.66, -71.3421],
+        [-88.3279, -49.3987],
+        [-87.7853, -60.5725]
+      ]
+    },
+    {
+      "id": "artemis-slater-plain",
+      "name": "Slater Plain",
+      "program": "Artemis",
+      "color": "#ffffff",
+      "latitude": -87.2,
+      "longitude": 125.5,
+      "site": "Artemis III candidate region — Slater Plain",
+      "terrain": "Plain",
+      "goal": "Crewed landing near permanently shadowed regions",
+      "facts": [
+        ["Program", "Artemis III candidate region"]
+      ],
+      "story": "One of the nine candidate landing regions NASA identified for Artemis III, a plain on the far side of the pole from Malapert."
+    }
+  ]
+}

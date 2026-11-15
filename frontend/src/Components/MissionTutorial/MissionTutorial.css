@@ -1,0 +1,345 @@
+
+.mission {
+  max-width: 650px;
+  margin: 50px auto;
+  padding: 40px;
+  background: #343434;
+  border: 1px solid #535353;
+  border-radius: 18px;
+}
+
+.eyebrow {
+  color: #73b8ff;
+  font-size: 12px;
+  letter-spacing: 3px;
+  font-weight: bold;
+}
+
+.mission h1 {
+  font-size: 34px;
+  margin-bottom: 12px;
+}
+
+.mission label {
+  display: block;
+  margin-top: 24px;
+  margin-bottom: 8px;
+}
+
+.mission input {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background: #2c2c2c;
+  color: white;
+  border: 1px solid #676767;
+  border-radius: 8px;
+  font: inherit;
+}
+
+.mission input[type="range"] {
+  padding: 0;
+  accent-color: #71bbff;
+}
+
+.mission button {
+  display: block;
+  width: 100%;
+  margin-top: 35px;
+  padding: 15px;
+  border: none;
+  border-radius: 9px;
+  background: #216de5;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.mission button:hover {
+  background: #3885ff;
+}
+
+@media (max-width: 700px) {
+  .mission {
+    margin: 16px;
+    padding: 24px;
+  }
+}
+
+.site-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.mission .site-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 18px;
+  background: #2c2c2c;
+  border: 1px solid #676767;
+  border-radius: 10px;
+  text-align: left;
+  color: #eaf1ff;
+  cursor: pointer;
+}
+
+.site-card span {
+  color: #bebebe;
+  font-size: 14px;
+  font-weight: normal;
+}
+
+.mission .site-card:hover {
+  border-color: #71bbff;
+  background: #424242;
+}
+
+.mission .site-card.selected {
+  border-color: #71bbff;
+  background: #484848;
+}
+
+.navigation {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.navigation button {
+  margin-top: 0;
+}
+
+.mission .secondary-button {
+  background: #4d4d4d;
+}
+
+.mission button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.evaluation-page {
+  max-width: 900px;
+}
+
+.evaluation-page h2 {
+  margin-top: 34px;
+  font-size: 22px;
+}
+
+.evaluation-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.summary-item,
+.metric-card,
+.timeline-panel,
+.science-note {
+  background: #2c2c2c;
+  border: 1px solid #535353;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.summary-item span,
+.metric-card small {
+  color: #b8b8b8;
+  font-size: 13px;
+}
+
+.summary-item strong {
+  font-size: 17px;
+}
+
+.evaluation-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.metric-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.metric-card > span {
+  font-weight: 600;
+}
+
+.metric-card > strong {
+  font-size: 40px;
+  color: #73b8ff;
+}
+
+.metric-card p {
+  color: #b8b8b8;
+  font-size: 13px;
+  margin: 0;
+}
+
+.timeline-panel > p {
+  color: #b8b8b8;
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+
+.timeline-label,
+.timeline-dates {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  margin: 12px 0 8px;
+  color: #d8d8d8;
+}
+
+.timeline-empty {
+  height: 22px;
+  border: 1px dashed #7a7a7a;
+  border-radius: 5px;
+  background: #393939;
+}
+
+.timeline-dates {
+  margin-top: 18px;
+  color: #a9a9a9;
+}
+
+.science-note {
+  margin-top: 24px;
+  border-left: 3px solid #73b8ff;
+}
+
+.science-note p {
+  margin-bottom: 0;
+  color: #cccccc;
+  line-height: 1.6;
+}
+
+@media (max-width: 650px) {
+  .evaluation-summary,
+  .evaluation-metrics {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mission-alert {
+  background: #352414;
+  border: 1px solid #d58d30;
+  border-left: 5px solid #f5a623;
+  border-radius: 12px;
+  padding: 24px;
+  margin: 26px 0;
+}
+
+.mission-alert > strong {
+  color: #ffc46b;
+}
+
+.mission-alert h2 {
+  margin-top: 12px;
+  color: #fff0d5;
+}
+
+.mission-alert p {
+  color: #e5cba6;
+  line-height: 1.6;
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 26px 0;
+}
+
+.comparison-card {
+  background: #2c2c2c;
+  border: 1px solid #5f5f5f;
+  padding: 24px;
+  border-radius: 12px;
+}
+
+.comparison-card h2 {
+  font-size: 20px;
+  margin: 0 0 18px;
+}
+
+.comparison-card p {
+  font-size: 14px;
+  color: #d0d0d0;
+}
+
+.comparison-card small {
+  color: #a7a7a7;
+}
+
+.comparison-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin: 18px 0;
+  padding-top: 14px;
+  border-top: 1px solid #535353;
+}
+
+.comparison-metric span {
+  color: #bfbfbf;
+  font-size: 14px;
+}
+
+.comparison-metric strong {
+  color: #73b8ff;
+  font-size: 25px;
+}
+
+@media (max-width: 700px) {
+  .comparison-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.decision-panel {
+  background: #3a3a3a;
+  border: 1px solid #828282;
+  border-radius: 12px;
+  padding: 24px;
+  margin: 20px 0;
+}
+
+.decision-panel h3 {
+  color: #8ccaff;
+  margin-top: 0;
+}
+
+.decision-panel p {
+  color: #d8d8d8;
+  line-height: 1.6;
+}
+
+.mission button:focus-visible {
+  outline: 3px solid #8ccaff;
+  outline-offset: 3px;
+}
+
+.mission .site-card.selected {
+  border: 2px solid #71bbff;
+  background: #484848;
+}

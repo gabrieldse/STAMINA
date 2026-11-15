@@ -1,0 +1,51 @@
+
+:root {
+  font-family: "Segoe UI", Arial, sans-serif;
+  color: #eef3ff;
+  background: #262626;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: #66645e transparent;
+}
+
+/* Rounded, low-contrast scrollbars that match the dark workspace. */
+@supports selector(::-webkit-scrollbar) {
+  * { scrollbar-width: auto; scrollbar-color: auto; }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: #66645e;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    border-radius: 999px;
+    min-height: 28px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background-color: #a18c59; }
+  ::-webkit-scrollbar-thumb:active { background-color: #d0b56f; }
+  ::-webkit-scrollbar-corner { background: transparent; }
+}
+
+@media (forced-colors: active) {
+  * { scrollbar-color: auto; }
+  ::-webkit-scrollbar-thumb { background-color: ButtonText; }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+button,
+input {
+  font: inherit;
+}
