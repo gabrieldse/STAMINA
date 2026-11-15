@@ -30,7 +30,8 @@ def sector_angles(vectors, up, east, north):
 @lru_cache(maxsize=128)
 def profile(latitude, longitude):
     if latitude > -80:
-        raise ValueError("LOLA horizon analysis supports sites south of 80 degrees S.")
+        from backend.global_lola import global_profile
+        return global_profile(float(latitude), float(longitude))
     if not DEM.exists():
         raise ValueError("LOLA 75S 240 m DEM unavailable. Generate it with lola_2d/south_pole.py.")
     up, east, north = basis(latitude, longitude)

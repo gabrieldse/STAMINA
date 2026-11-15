@@ -22,6 +22,7 @@ SPICE_LOCK = Lock()
 class VisibilityMapRequest(BaseModel):
     sun: list[float] | None = Field(default=None, min_length=3, max_length=3)
     earth: list[float] | None = Field(default=None, min_length=3, max_length=3)
+    center: list[float] = Field(default_factory=lambda: [-90.0, 0.0], min_length=2, max_length=2)
     size: int = Field(default=768, ge=32, le=2048, strict=True)
     encoding: Literal["array", "bitset"] = "array"
 
@@ -33,11 +34,17 @@ def map_visibility(request: VisibilityMapRequest):
     for vector in (request.sun, request.earth):
         if vector is not None and (not np.isfinite(vector).all() or np.linalg.norm(vector) <= 1740):
             raise HTTPException(422, "Invalid Moon-fixed body position.")
+    if not np.isfinite(request.center).all() or not -90 <= request.center[0] <= 90 or not -180 <= request.center[1] <= 360:
+        raise HTTPException(422, "Invalid map center coordinates.")
     try:
         # Keep installations without the optional compiler responsive too.
         size = request.size if NUMBA_AVAILABLE else min(request.size, 512)
+        center = (request.center[0], ((request.center[1]+180)%360)-180)
+        if center == (-90.0, 0.0):
+            return visibility_map(size, tuple(request.sun) if request.sun else None,
+                                  tuple(request.earth) if request.earth else None, request.encoding)
         return visibility_map(size, tuple(request.sun) if request.sun else None,
-                              tuple(request.earth) if request.earth else None, request.encoding)
+                              tuple(request.earth) if request.earth else None, request.encoding, center)
     except ValueError as exc:
         raise HTTPException(503, str(exc)) from exc
 
@@ -150,7 +157,8 @@ def analyze(request: AnalysisRequest):
     if not instant:
         metrics.update(maxDarknessHours=longest_outage(sun, step/3600),
                        maxCommunicationBlackoutHours=longest_outage(earth, step/3600))
-    message = ("LOLA 240 m topographic horizon, 0.5-degree azimuth sectors, NASA DE440s / IAU_MOON. Surface observer; body-center visibility; finite disks and scattered light excluded. "
+    terrain_source = ("LOLA 240 m polar DEM" if request.site.latitude <= -80 else "NASA Moon Trek global LOLA DEM (~400 m regional terrain)")
+    message = (f"{terrain_source} horizon, 0.5-degree azimuth sectors, NASA DE440s / IAU_MOON. Surface observer; body-center visibility; finite disks and scattered light excluded. "
                + ("Single instant at 00:00 UTC; outage durations are unavailable." if instant else
                   "10-minute samples over the selected mission, starting at 00:00 UTC; outage durations are approximate and limited to this window."))
     return dict(status="computed", siteId=request.site.id, **metrics, message=message,
@@ -161,7 +169,7 @@ def analyze(request: AnalysisRequest):
 
 
 @app.get("/api/horizon")
-def horizon(latitude: float = Query(ge=-90, le=-80), longitude: float = Query(ge=-180, le=180)):
+def horizon(latitude: float = Query(ge=-90, le=90), longitude: float = Query(ge=-180, le=180)):
     try:
         observer, skyline = profile(latitude, longitude)
         return dict(observerM=observer.tolist(), horizonRadians=skyline.tolist())

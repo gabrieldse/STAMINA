@@ -433,17 +433,21 @@
 .explorer-timeline p, .explorer-timeline small { font-size: 11px; line-height: 1.5; }
 .explorer-timeline-labels { flex-wrap: wrap; }
 
-.map-timeline { box-sizing: border-box; max-height: min(240px, 35vh); overflow: auto; padding: 8px 12px; }
+.map-timeline { box-sizing: border-box; max-height: min(240px, 35vh); overflow: auto; padding: 8px 12px; scrollbar-color: #656c75 #292d32; }
 .map-timeline .mission-scrubber { margin-top: 5px; font-size: 11px; }
 .map-timeline .mission-scrubber input { margin: 2px 0; }
 .map-timeline .explorer-timeline-labels { margin-top: 2px; font-size: 10px; }
 .map-timeline-details { margin-top: 6px; font-size: 11px; }
 .map-timeline-details summary { cursor: pointer; color: #c6c6c6; padding: 2px 0; }
 .map-timeline-details summary:focus-visible { outline: 2px solid #e5bd59; outline-offset: 2px; }
-.map-time-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 6px; font-size: 12px; }
-.map-time-controls button, .map-time-controls select, .map-timeline > p button { color: #eee; background: #252525; border: 1px solid #666; border-radius: 5px; padding: 5px 8px; cursor: pointer; }
+.map-time-controls { position: sticky; bottom: -8px; z-index: 2; display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin: 8px -12px -8px; padding: 9px 12px; border-top: 1px solid #4c525b; background: linear-gradient(180deg, rgba(43,47,53,.96), #25292f 30%); font-size: 12px; }
+.map-time-controls button, .map-time-controls select, .map-timeline > p button { color: #eee; background: #343a42; border: 1px solid #626a75; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+.map-time-controls button:hover:not(:disabled), .map-time-controls select:hover { border-color: #d0b565; }
+.map-time-controls .map-time-play { min-width: 72px; color: #171717; border-color: #e5bd59; background: #e5bd59; font-weight: 700; }
+.map-time-controls .map-time-play:hover { background: #f0ce71; }
+.map-time-controls label { display: flex; align-items: center; gap: 6px; color: #c7cbd1; }
 .map-time-controls button:disabled { opacity: .4; cursor: default; }
-.map-time-controls strong { margin-left: auto; font-variant-numeric: tabular-nums; color: #e5bd59; }
+.map-time-controls strong { margin-left: auto; font-size: 12px; font-variant-numeric: tabular-nums; color: #e5bd59; }
 .map-site-timelines { max-height: 125px; overflow: auto; margin: 10px 0; }
 .map-site-time-row { display: grid; grid-template-columns: 140px minmax(65px, 1fr) 220px; align-items: center; gap: 10px; margin: 7px 0; font-size: 11px; }
 .map-site-time-row > button { text-align: left; color: #ddd; background: transparent; border: 0; padding: 2px; cursor: pointer; font: inherit; }
@@ -911,18 +915,6 @@
   padding: 6px 12px;
   background: #2d2d2d;
   border-bottom: 1px solid #535353;
-}
-
-/* Map notes under the map (contours, elevation masks) */
-.map-footer {
-  flex-shrink: 0;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 4px 12px;
-  padding: 6px 20px;
-  color: #b6b6b6;
-  font-size: 12px;
 }
 
 /* Left panel: the generic intro repeats the heading; keep the elevation-filter note */

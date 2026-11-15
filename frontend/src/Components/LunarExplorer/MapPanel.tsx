@@ -39,7 +39,6 @@ type Props = {
   onMapArea: () => void;
   date: string;
   positions: BodyPositions | null;
-  positionStatus: string;
   onVisibilityReady?: (ready: boolean) => void;
   playing?: boolean;
   selectedSite: LunarSite | null;
@@ -69,6 +68,7 @@ type MapSite = {
 };
 
 const CUSTOM_COLOR = "#ff9f43";
+type VisibilityMask = { size: number; radiusM: number; resolutionM: number; coveragePct: number; encoding: "bitset-msb"; visiblePacked: string; coveragePacked: string };
 
 // Artemis III regions share names with craters (Haworth, Nobile, ...) but are
 // separate areas next to them, so their map labels say "A3".
@@ -123,7 +123,6 @@ export default function MapPanel({
   initialSite,
   onMapArea,
   positions,
-  positionStatus,
   onVisibilityReady,
   playing = false,
   selectedSite,
@@ -139,7 +138,7 @@ export default function MapPanel({
 }: Props) {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [viewerReady, setViewerReady] = useState(false);
-  const [visibilityStatus, setVisibilityStatus] = useState("");
+  const [visibilityMask, setVisibilityMask] = useState<VisibilityMask | null>(null);
   const [mapCenter, setMapCenter] = useState<{ id: string; latitude: number; longitude: number; name: string } | null>(initialSite ? { ...initialSite, id: "initial-site" } : null);
   const globalCentered = mapCenter !== null;
   const globalMapActive = globalCentered && !comparing;
@@ -147,20 +146,20 @@ export default function MapPanel({
   const earthVisible = Boolean(filters.earthVisibility?.enabled);
   const terrainEnabled = Boolean(filters.terrain?.enabled);
   useEffect(() => {
-    if (viewerReady) postToViewer({ type: "stamina:terrain-overlay", enabled: terrainEnabled });
-  }, [viewerReady, terrainEnabled]);
+    if (viewerReady && !globalMapActive) postToViewer({ type: "stamina:terrain-overlay", enabled: terrainEnabled });
+  }, [viewerReady, terrainEnabled, globalMapActive]);
   useEffect(() => {
-    if (!viewerReady) return;
-    if ((!sunVisible && !earthVisible) || globalMapActive) {
+    if (!viewerReady && !globalMapActive) return;
+    if (!sunVisible && !earthVisible) {
       onVisibilityReady?.(true);
-      postToViewer({ type: "stamina:visibility-mask", config: null });
-      setVisibilityStatus("");
+      setVisibilityMask(null);
+      if (viewerReady) postToViewer({ type: "stamina:visibility-mask", config: null });
       return;
     }
     const controller = new AbortController();
     onVisibilityReady?.(false);
-    postToViewer({ type: "stamina:visibility-mask", config: { pending: true } });
-    setVisibilityStatus("Calculating visible areas from LOLA terrain...");
+    setVisibilityMask(null);
+    if (viewerReady && !globalMapActive) postToViewer({ type: "stamina:visibility-mask", config: { pending: true } });
     const timer = window.setTimeout(async () => {
       if (!positions) return;
       try {
@@ -169,24 +168,26 @@ export default function MapPanel({
           if (controller.signal.aborted) return;
           const response = await fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/visibility-map`, {
             method: "POST", headers: { "Content-Type": "application/json" }, signal: controller.signal,
-            body: JSON.stringify({ sun: sunVisible ? positions.sun : null, earth: earthVisible ? positions.earth : null, size, encoding: "bitset" }),
+            body: JSON.stringify({ sun: sunVisible ? positions.sun : null, earth: earthVisible ? positions.earth : null, size, encoding: "bitset",
+              ...(globalMapActive && mapCenter ? { center: [mapCenter.latitude, mapCenter.longitude] } : {}) }),
           });
           const data = await response.json();
           if (!response.ok) throw new Error(apiErrorMessage(data, response.status));
           if (!Number.isInteger(data.size) || data.size < 32 || data.size > size || data.encoding !== "bitset-msb" ||
-            typeof data.visiblePacked !== "string" || atob(data.visiblePacked).length !== Math.ceil(data.size*data.size/8)) throw new Error("Incomplete visibility map.");
+            typeof data.visiblePacked !== "string" || atob(data.visiblePacked).length !== Math.ceil(data.size*data.size/8) ||
+            typeof data.coveragePacked !== "string" || atob(data.coveragePacked).length !== Math.ceil(data.size*data.size/8)) throw new Error("Incomplete visibility map.");
           if (controller.signal.aborted) return;
-          postToViewer({ type: "stamina:visibility-mask", config: data });
-          setVisibilityStatus(`${sunVisible && earthVisible ? "Sun AND Earth" : sunVisible ? "Sun" : "Earth"} visible areas only | LOLA terrain | ${Math.round(data.resolutionM)} m / cell${!playing && size === 384 ? " | Refining..." : ""}`);
+          if (globalMapActive && data.coveragePct === 0) throw new Error("NASA global LOLA returned no terrain for this map center.");
+          if (globalMapActive) setVisibilityMask(data as VisibilityMask);
+          else postToViewer({ type: "stamina:visibility-mask", config: data });
         }
         onVisibilityReady?.(true);
       } catch (cause) {
-        if (!controller.signal.aborted) setVisibilityStatus(cause instanceof Error ? cause.message : "Visibility map unavailable.");
+        if (!controller.signal.aborted) console.error("Visibility map unavailable:", cause);
       }
     }, 150);
     return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [viewerReady, positions, sunVisible, earthVisible, onVisibilityReady, playing, globalMapActive]);
-  const elevationStatus = [positions?.utc.replace("T", " ").replace("Z", " UTC"), visibilityStatus, positionStatus].filter(Boolean).join(" | ");
+  }, [viewerReady, positions, sunVisible, earthVisible, onVisibilityReady, playing, globalMapActive, mapCenter]);
   // Site whose info card the user closed; it reopens for the next site.
   const [closedInfoId, setClosedInfoId] = useState<string | null>(null);
   const infoSite = selectedSite?.details;
@@ -585,7 +586,7 @@ export default function MapPanel({
       </div>
 
       <div className="map-workspace map-workspace-embed">
-        <button className="map-area-button" type="button" onClick={onMapArea} aria-haspopup="dialog" title="Choose coordinates or use the default south-pole map">Map area</button>
+        {!comparing && <button className="map-area-button" type="button" onClick={onMapArea} aria-haspopup="dialog" title="Choose coordinates or use the default south-pole map">Map area</button>}
         {/* The 2D map stays loaded in 3D: it still supplies site temperatures. */}
         <iframe
           ref={frameRef}
@@ -595,7 +596,7 @@ export default function MapPanel({
         />
 
         {globalCentered && !comparing && activeView === "2d" && (
-            <CircularSiteMap key={mapCenter.id} center={mapCenter} sites={globeSites} selectedId={selectedId}
+            <CircularSiteMap key={mapCenter.id} center={mapCenter} sites={globeSites} selectedId={selectedId} visibilityMask={visibilityMask}
               onPick={pickOnGlobe} onPlace={(latitude, longitude) => addPoint(latitude, longitude)}
               addMode={addMode} />
         )}
@@ -659,14 +660,6 @@ export default function MapPanel({
         )}
       </div>
 
-      {/* Map notes: contour legend and the Sun/Earth visibility mask status */}
-      {(terrainEnabled || elevationStatus || globalCentered) && (
-        <div className="map-footer">
-          {globalCentered && activeView === "2d" && !comparing && <span>LROC imagery. Terrain visibility, contour and Diviner layers cover the south-pole map; use Default south pole to view them.</span>}
-          {terrainEnabled && (!globalCentered || comparing) && <span>LOLA contours: 500 m intervals · Bold: 1,000 m · Heights relative to the lunar reference sphere</span>}
-          {elevationStatus && <span role="status">{activeView === "3d" && (sunVisible || earthVisible) ? "Visibility mask is shown in the 2D polar map. " : ""}{elevationStatus}</span>}
-        </div>
-      )}
     </section>
   );
 }

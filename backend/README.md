@@ -9,7 +9,12 @@ uv pip install --python .venv/Scripts/python.exe -r requirements.txt
 Visibility follows the terrain-horizon approach of Mazarico et al. (2011),
 https://doi.org/10.1016/j.icarus.2010.10.030. The local LOLA
 `lola_2d/data/ldem_75s_240m_dem.tif` is required (generate via
-`uv run lola_2d/south_pole.py`). Analysis supports sites south of 80 S.
+`uv run lola_2d/south_pole.py`) and supplies the highest-detail south-polar
+analysis. Other locations use cached, on-demand regional windows from NASA
+Moon Trek's global `LRO_LOLA_DEM_Global_256ppd_v06` ImageServer (about 400 m
+per output cell). The global service needs an internet connection the first
+time a region is analyzed; the most recent two terrain windows remain cached
+in memory.
 For each surface observer, all valid DEM cells contribute their Moon-curvature
 corrected elevation to a maximum skyline in 720 azimuth sectors (0.5 degrees).
 Profiles are cached in memory. This sector maximum is conservative and can
@@ -19,12 +24,14 @@ NASA SPICE DE440s / IAU_MOON body-center directions are compared with the
 skyline in the matching sector. This is an approximation inspired by the paper,
 not its complete illumination model: finite solar/Earth disks, scattered light,
 subpixel relief, observer height and DEM/frame uncertainties are not modeled.
-The 240 m grid and sector binning limit precision.
+The polar grid is 240 m; the global regional grid is about 400 m. Sector binning
+and resampling limit precision.
 
 Mission analysis uses 10-minute midpoint samples; instant mode uses midnight UTC.
 The map site timelines use hourly samples and `/api/horizon` profiles with the
 same visibility predicate. `/api/visibility-map` traces each selected body's
-line of sight against the 240 m LOLA DEM, including lunar curvature and parallax.
+line of sight against the local polar LOLA DEM or global LOLA terrain window,
+including lunar curvature and parallax.
 The map first displays a 384 by 384 preview, then refines to 1536 by 1536
 (396 m/cell, versus the previous 2375 m/cell). Playback uses 768 by 768
 (792 m/cell) and waits for each result. The API supports up to 2048 by 2048.

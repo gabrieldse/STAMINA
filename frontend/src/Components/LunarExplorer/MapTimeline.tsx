@@ -118,26 +118,12 @@ function TimelineWindow({ durationDays, ...props }: Props) {
     return { site, sun, earth, passes, runs, ready: Boolean(horizon) };
   }), [sites, series, sunThreshold, earthThreshold, horizons]);
 
-  const selectedRow = rows.find(row => row.site.id === props.selectedSite?.id);
-  const visibilityStatus = enabled && selectedRow
-    ? `${selectedRow.site.name}: ${!selectedRow.ready
-      ? horizonErrors[selectedRow.site.id] || "calculating terrain horizon..."
-      : [sunThreshold ? `Sun ${selectedRow.sun[index] ? "visible" : "obstructed"}` : "",
-        earthThreshold ? `Earth ${selectedRow.earth[index] ? "visible" : "obstructed"}` : ""].filter(Boolean).join(" · ")}`
-    : "";
   function seek(next: number) { setPlaying(false); setIndex(next); }
   return <>
-    <div className="explorer-map-area"><MapPanel {...props} positions={positions} playing={playing && index < last} onVisibilityReady={setVisibilityReady} onVisibleSitesChange={setSites} positionStatus={error || (!series ? "Loading ephemeris…" : visibilityStatus)} /></div>
+    <div className="explorer-map-area"><MapPanel {...props} positions={positions} playing={playing && index < last} onVisibilityReady={setVisibilityReady} onVisibleSitesChange={setSites} /></div>
     <div className="explorer-timeline map-timeline">
       <div className="explorer-timeline-heading"><strong>Landing sites · time explorer</strong><span>SPICE · 1-hour samples · UTC</span></div>
       {error ? <p role="alert">{error} <button type="button" onClick={() => { setError(""); setAttempt(value => value + 1); }}>Retry</button></p> : !series ? <p role="status">Loading Sun and Earth positions…</p> : <>
-        <div className="map-time-controls">
-          <button type="button" onClick={() => { if (index === last) setIndex(0); setPlaying(!playing || index === last); }}>{playing && index < last ? "Pause" : "Play"}</button>
-          <button type="button" aria-label="Previous hour" disabled={index === 0} onClick={() => seek(index - 1)}>−1 h</button>
-          <button type="button" aria-label="Next hour" disabled={index === last} onClick={() => seek(index + 1)}>+1 h</button>
-          <label>Speed <select value={speed} onChange={event => setSpeed(Number(event.target.value))}><option value={1}>1 h / s</option><option value={6}>6 h / s</option><option value={12}>12 h / s</option></select>{enabled && " (visibility: waits for terrain map)"}</label>
-          <strong>{utc(series.times[index])}</strong>
-        </div>
         <label className="mission-scrubber">Observation time
           <input type="range" min={0} max={last} step={1} value={index} onChange={event => seek(Number(event.target.value))} aria-valuetext={utc(series.times[index])} />
         </label>
@@ -161,6 +147,13 @@ function TimelineWindow({ durationDays, ...props }: Props) {
         </div>
         <small>Animated ephemeris preview, not live telemetry. LOLA 240 m terrain horizons, 0.5-degree azimuth sectors; body centers at surface height. Window follows mission start and duration.</small>
         </details>
+        <div className="map-time-controls">
+          <button className="map-time-play" type="button" onClick={() => { if (index === last) setIndex(0); setPlaying(!playing || index === last); }}>{playing && index < last ? "Pause" : "Play"}</button>
+          <button type="button" aria-label="Previous hour" disabled={index === 0} onClick={() => seek(index - 1)}>−1 h</button>
+          <button type="button" aria-label="Next hour" disabled={index === last} onClick={() => seek(index + 1)}>+1 h</button>
+          <label>Speed <select value={speed} onChange={event => setSpeed(Number(event.target.value))}><option value={1}>1 h / s</option><option value={6}>6 h / s</option><option value={12}>12 h / s</option></select></label>
+          <strong>{utc(series.times[index])}</strong>
+        </div>
       </>}
     </div>
   </>;

@@ -15,10 +15,10 @@ at the new view once the interaction ends.
 
 Custom maps use LROC WAC imagery, first the bundled offline mosaic and then
 visible NASA Moon Trek tiles. Markers and surface clicks use the same local
-projection; clicks outside the circle cannot add points. Scientific terrain,
-visibility and temperature layers retain their existing south-pole coverage in
-the default map and are not extrapolated globally. The default option preserves
-the existing LOLA relief and polar layers. Custom sites and map center survive
+projection; clicks outside the circle cannot add points. Sun and Earth visibility
+use the south-pole LOLA DEM or fetch a cached regional window from NASA's global
+LOLA DEM for other lunar locations. Contours and Diviner temperature layers
+remain specific to the default south-pole map. Custom sites and map center survive
 date changes. **Map area**, at the upper-left inside the map, opens the coordinate
 or default-map choice, with Cancel to keep the current area. **Help** opens the
 original Site Demo / Free Exploration menu, without emoji icons.

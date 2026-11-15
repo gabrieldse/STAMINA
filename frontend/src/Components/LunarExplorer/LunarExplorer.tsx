@@ -109,10 +109,8 @@ export default function LunarExplorer({ initialSite, onMapArea }: { initialSite?
     durationDays <= 365);
 
   // Check if scientific analysis can run
-  const terrainCovered = selectedSite?.latitude != null && selectedSite.latitude <= -80;
   const canAnalyze =
     validSite &&
-    terrainCovered &&
     validDuration &&
     Boolean(date) &&
     !loading;
@@ -430,7 +428,6 @@ export default function LunarExplorer({ initialSite, onMapArea }: { initialSite?
             </label>}
 
             {/* ANALYSIS BUTTON */}
-            {validSite && !terrainCovered && <p className="explorer-data-note">LOLA terrain visibility analysis covers 80°S to the south pole. This site can be explored in its circular imagery map and the 3D globe.</p>}
             <button
               type="button"
               disabled={!canAnalyze}
